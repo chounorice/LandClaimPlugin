@@ -120,6 +120,9 @@ Ban confirmations, abandon confirmations, unclaim-all confirmations, and AnvilIn
 | `/claim admin check` | View detailed claim info (owner UUID, profile name) |
 | `/claim admin unclaim` | Force-unclaim the chunk you're standing in |
 | `/claim admin add chunk <player> <amount>` | Add bonus claim chunks to a player's limit *(Console & In-Game)*. Supports selectors (`@p`, `@s`, `@r`, `@a`), reverse ordering (`<amount> <player>`), and self-granting (`<amount>`). See [Integrations Guide](/guide/integrations) |
+| `/claim admin set chunk <player> <amount>` | Set a player's bonus claim chunks directly *(Console & In-Game, supports selectors, reverse ordering, and self-targeting)* |
+| `/claim admin remove chunk <player> <amount>` | Deduct bonus claim chunks from a player *(Console & In-Game, supports selectors, reverse ordering, and self-targeting)* |
+| `/claim admin reset chunk [player]` | Reset bonus claim chunks back to 0 *(Console & In-Game, supports selectors, defaults to self for in-game players)* |
 | `/claim admin setalias <claim> <alias>` | Set or reset an owner's custom alias *(Console & In-Game)* |
 | `/claim admin trust list <owner>` | List players trusted by this owner *(Console & In-Game, supports selectors)* |
 | `/claim admin trust who <player>` | List claims where this player is trusted *(Console & In-Game, supports selectors)* |

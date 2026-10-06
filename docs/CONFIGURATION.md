@@ -24,7 +24,9 @@ For all messages and placeholders, the plugin supports both **angle brackets** `
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `chunkClaimLimit` | Integer | `5` | Default max chunks per player |
+| `chunkClaimLimit` | Integer | `5` | Default base chunks limit per player |
+| `maxBonusClaimBlocks` | Integer | `0` | Hard cap on bonus chunks a player can buy/acquire (0 = unlimited) |
+| `maxTotalClaimLimit` | Integer | `0` | Hard cap on total claim limit including base limit and bonus chunks (0 = unlimited) |
 | `maxWarps` | Integer | `3` | Default max warps per player |
 
 Permission overrides: `landclaim.limit.<n>`, `landclaim.warps.limit.<n>`
