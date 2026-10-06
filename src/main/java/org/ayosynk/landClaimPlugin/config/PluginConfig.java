@@ -139,6 +139,12 @@ public class PluginConfig extends OkaeriConfig {
 
     @Comment("Default maximum number of chunks a player is allowed to claim (can be bypassed with landclaim.limit.X permission).")
     public int chunkClaimLimit = 5;
+
+    @Comment("Maximum bonus claim blocks a player can buy or receive (0 = unlimited).")
+    public int maxBonusClaimBlocks = 0;
+
+    @Comment("Maximum total claim limit a player can reach through base limit + permissions + purchases (0 = unlimited).")
+    public int maxTotalClaimLimit = 0;
     
     @Comment("Maximum number of claims a player is allowed to join as a trusted member (default: 1).")
     public int maxMemberships = 1;

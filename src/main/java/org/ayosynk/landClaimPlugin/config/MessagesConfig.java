@@ -17,6 +17,12 @@ public class MessagesConfig extends OkaeriConfig {
     public String notOwner = "<red>You do not own this claim.";
     public String playerNotFound = "<red>Player not found.";
     public String adminAddChunkSuccess = "<green>Successfully gave <gold><amount></gold> bonus chunks to <gold><player></gold>!";
+    public String adminSetChunkSuccess = "<green>Successfully set bonus chunks for <gold><player></gold> to <gold><amount></gold>! <gray>(New limit: <limit>)</gray>";
+    public String adminRemoveChunkSuccess = "<green>Successfully removed <gold><amount></gold> bonus chunks from <gold><player></gold>! <gray>(New limit: <limit>)</gray>";
+    public String adminResetChunkSuccess = "<green>Successfully reset bonus chunks for <gold><player></gold> to 0! <gray>(New limit: <limit>)</gray>";
+    public String limitPurchasesDisabled = "<red>Purchasing extra limits is currently disabled on this server.";
+    public String maxBonusClaimBlocksReached = "<red>Cannot purchase <amount> claim blocks! Maximum bonus claim blocks allowed: <gold><max></gold> (you can buy at most <gold><remaining></gold> more).";
+    public String maxTotalClaimLimitReached = "<red>Cannot purchase <amount> claim blocks! Maximum total claim limit is <gold><max></gold> (you can buy at most <gold><remaining></gold> more).";
     public String adminEditingProfile = "<red>[ADMIN] <green>Now editing <gold><player></gold>'s claim profile.";
     public String adminTrustAdded = "<red>[ADMIN] <green>Added trust override for <gold><player></gold> in <gold><owner></gold>'s claim.";
     public String adminTrustRemoved = "<red>[ADMIN] <green>Removed trust override for <gold><player></gold> in <gold><owner></gold>'s claim.";

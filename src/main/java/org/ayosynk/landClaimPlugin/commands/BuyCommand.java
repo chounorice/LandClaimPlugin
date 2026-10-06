@@ -35,11 +35,38 @@ public class BuyCommand implements LandClaimCommand {
                 .optional("amount", org.incendo.cloud.parser.standard.IntegerParser.integerParser(1))
                 .handler(context -> {
                     Player player = context.sender().source();
+                    if (!isLimitPurchasesEnabled()) {
+                        player.sendMessage(configManager.getMessage("limit-purchases-disabled"));
+                        return;
+                    }
                     int amount = context.getOrDefault("amount", 1);
                     if (amount <= 0) {
                         player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
                                 .deserialize("<red>Amount must be greater than 0."));
                         return;
+                    }
+                    org.ayosynk.landClaimPlugin.models.ClaimPlayer cp = plugin.getCacheManager().getPlayerCache().getIfPresent(player.getUniqueId());
+                    int currentBonus = cp != null ? cp.getBonusClaimBlocks() : 0;
+                    int maxBonus = plugin.getConfigManager().getPluginConfig().maxBonusClaimBlocks;
+                    if (maxBonus > 0 && (long) currentBonus + amount > maxBonus) {
+                        int remaining = Math.max(0, maxBonus - currentBonus);
+                        player.sendMessage(configManager.getMessage("max-bonus-claim-blocks-reached",
+                                "<amount>", String.valueOf(amount),
+                                "<max>", String.valueOf(maxBonus),
+                                "<remaining>", String.valueOf(remaining)));
+                        return;
+                    }
+                    int maxTotal = plugin.getConfigManager().getPluginConfig().maxTotalClaimLimit;
+                    if (maxTotal > 0) {
+                        int currentLimit = plugin.getClaimManager().getClaimLimit(player);
+                        if ((long) currentLimit + amount > maxTotal) {
+                            int remaining = Math.max(0, maxTotal - currentLimit);
+                            player.sendMessage(configManager.getMessage("max-total-claim-limit-reached",
+                                    "<amount>", String.valueOf(amount),
+                                    "<max>", String.valueOf(maxTotal),
+                                    "<remaining>", String.valueOf(remaining)));
+                            return;
+                        }
                     }
                     double costPer = getCost("claimBlockCost", 50.0);
                     double totalCost = costPer * amount;
@@ -57,6 +84,10 @@ public class BuyCommand implements LandClaimCommand {
         manager.command(buyBuilder.literal("role")
                 .handler(context -> {
                     Player player = context.sender().source();
+                    if (!isLimitPurchasesEnabled()) {
+                        player.sendMessage(configManager.getMessage("limit-purchases-disabled"));
+                        return;
+                    }
                     ClaimProfile profile = claimManager.getActiveProfile(player);
                     if (profile == null) {
                         player.sendMessage(configManager.getMessage("no-profile"));
@@ -80,6 +111,10 @@ public class BuyCommand implements LandClaimCommand {
         manager.command(buyBuilder.literal("member")
                 .handler(context -> {
                     Player player = context.sender().source();
+                    if (!isLimitPurchasesEnabled()) {
+                        player.sendMessage(configManager.getMessage("limit-purchases-disabled"));
+                        return;
+                    }
                     ClaimProfile profile = claimManager.getActiveProfile(player);
                     if (profile == null) {
                         player.sendMessage(configManager.getMessage("no-profile"));
@@ -103,6 +138,10 @@ public class BuyCommand implements LandClaimCommand {
         manager.command(buyBuilder.literal("warp")
                 .handler(context -> {
                     Player player = context.sender().source();
+                    if (!isLimitPurchasesEnabled()) {
+                        player.sendMessage(configManager.getMessage("limit-purchases-disabled"));
+                        return;
+                    }
                     ClaimProfile profile = claimManager.getActiveProfile(player);
                     if (profile == null) {
                         player.sendMessage(configManager.getMessage("no-profile"));
@@ -121,6 +160,20 @@ public class BuyCommand implements LandClaimCommand {
                     player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
                             .deserialize("<green>Successfully purchased an additional warp slot! Total bonus slots: <gold>" + profile.getBonusWarpSlots() + "</gold>"));
                 }));
+    }
+
+    private boolean isLimitPurchasesEnabled() {
+        try {
+            Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("LandClaimPlugin-Economy");
+            if (ecoPlugin == null || !ecoPlugin.isEnabled()) {
+                return false;
+            }
+            Object config = ecoPlugin.getClass().getMethod("getEconomyConfig").invoke(ecoPlugin);
+            Object limitPurchases = config.getClass().getField("limitPurchases").get(config);
+            return (boolean) limitPurchases.getClass().getField("enabled").get(limitPurchases);
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private double getCost(String fieldName, double defaultValue) {
