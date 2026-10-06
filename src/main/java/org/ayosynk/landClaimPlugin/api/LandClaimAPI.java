@@ -312,6 +312,8 @@ public interface LandClaimAPI {
      */
     CompletableFuture<Integer> getBonusBlocks(UUID playerId);
 
+    CompletableFuture<Integer> setBonusBlocks(UUID playerId, int amount);
+
     // ========== Utility ==========
 
     /**

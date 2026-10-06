@@ -76,19 +76,36 @@ public class AdminCommand implements LandClaimCommand {
         //   /claim admin add chunk <player> <amount> (e.g. @p 5, Notch 5)
         //   /claim admin add chunk <amount> <player> (e.g. 5 @p, 5 Notch)
         //   /claim admin add chunk <amount> (self-grant for in-game players, e.g. 5)
-        //   /claim admin add chunk <player> (defaults amount to 1, e.g. @p, Notch)
-        // /claim admin add chunk <arg1> [arg2] (Console + Player)
-        // Accepts:
-        //   /claim admin add chunk <player> <amount> (e.g. @p 5, Notch 5)
-        //   /claim admin add chunk <amount> <player> (e.g. 5 @p, 5 Notch)
-        //   /claim admin add chunk <amount> (self-grant for in-game players, e.g. 5)
-        //   /claim admin add chunk <player> (defaults amount to 1, e.g. @p, Notch)
         manager.command(adminBase.literal("add").literal("chunk")
                 .optional("input", StringParser.greedyStringParser(), OfflinePlayerSuggestions.adminChunk())
                 .handler(context -> {
                     Source source = context.sender();
                     String input = context.getOrDefault("input", null);
                     handleAdminAddChunk(source, input);
+                }));
+
+        manager.command(adminBase.literal("set").literal("chunk")
+                .optional("input", StringParser.greedyStringParser(), OfflinePlayerSuggestions.adminChunk())
+                .handler(context -> {
+                    Source source = context.sender();
+                    String input = context.getOrDefault("input", null);
+                    handleAdminSetChunk(source, input);
+                }));
+
+        manager.command(adminBase.literal("remove").literal("chunk")
+                .optional("input", StringParser.greedyStringParser(), OfflinePlayerSuggestions.adminChunk())
+                .handler(context -> {
+                    Source source = context.sender();
+                    String input = context.getOrDefault("input", null);
+                    handleAdminRemoveChunk(source, input);
+                }));
+
+        manager.command(adminBase.literal("reset").literal("chunk")
+                .optional("input", StringParser.greedyStringParser(), OfflinePlayerSuggestions.withSelectors())
+                .handler(context -> {
+                    Source source = context.sender();
+                    String input = context.getOrDefault("input", null);
+                    handleAdminResetChunk(source, input);
                 }));
 
         manager.command(adminBase.literal("decay").literal("run")
@@ -263,6 +280,154 @@ public class AdminCommand implements LandClaimCommand {
         }
 
         adminAddChunk(sender, amount, targets);
+    }
+
+    private void handleAdminSetChunk(Source source, String input) {
+        CommandSender sender = source.source();
+        List<String> tokens = tokenize(input);
+
+        if (tokens.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("invalid-command"));
+            return;
+        }
+
+        String targetInput;
+        int amount;
+
+        if (tokens.size() == 1) {
+            String token = tokens.get(0);
+            Integer parsedAmount = tryParseNonNegativeInt(token);
+            if (parsedAmount != null) {
+                amount = parsedAmount;
+                if (sender instanceof Player player) {
+                    targetInput = player.getName();
+                } else {
+                    sender.sendMessage(configManager.getMessage("player-not-found"));
+                    return;
+                }
+            } else {
+                sender.sendMessage(configManager.getMessage("invalid-command"));
+                return;
+            }
+        } else if (tokens.size() == 2) {
+            String token1 = tokens.get(0);
+            String token2 = tokens.get(1);
+            Integer amountFromToken1 = tryParseNonNegativeInt(token1);
+            Integer amountFromToken2 = tryParseNonNegativeInt(token2);
+
+            if (amountFromToken2 != null && amountFromToken1 == null) {
+                targetInput = token1;
+                amount = amountFromToken2;
+            } else if (amountFromToken1 != null && amountFromToken2 == null) {
+                targetInput = token2;
+                amount = amountFromToken1;
+            } else if (amountFromToken1 != null && amountFromToken2 != null) {
+                targetInput = token1;
+                amount = amountFromToken2;
+            } else {
+                sender.sendMessage(configManager.getMessage("invalid-command"));
+                return;
+            }
+        } else {
+            sender.sendMessage(configManager.getMessage("invalid-command"));
+            return;
+        }
+
+        List<OfflinePlayer> targets = resolveTargets(source, targetInput);
+        if (targets.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("player-not-found"));
+            return;
+        }
+
+        adminSetChunk(sender, amount, targets);
+    }
+
+    private void handleAdminRemoveChunk(Source source, String input) {
+        CommandSender sender = source.source();
+        List<String> tokens = tokenize(input);
+
+        if (tokens.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("invalid-command"));
+            return;
+        }
+
+        String targetInput;
+        int amount;
+
+        if (tokens.size() == 1) {
+            String token = tokens.get(0);
+            Integer parsedAmount = tryParsePositiveInt(token);
+            if (parsedAmount != null) {
+                amount = parsedAmount;
+                if (sender instanceof Player player) {
+                    targetInput = player.getName();
+                } else {
+                    sender.sendMessage(configManager.getMessage("player-not-found"));
+                    return;
+                }
+            } else {
+                targetInput = token;
+                amount = 1;
+            }
+        } else if (tokens.size() == 2) {
+            String token1 = tokens.get(0);
+            String token2 = tokens.get(1);
+            Integer amountFromToken1 = tryParsePositiveInt(token1);
+            Integer amountFromToken2 = tryParsePositiveInt(token2);
+
+            if (amountFromToken2 != null && amountFromToken1 == null) {
+                targetInput = token1;
+                amount = amountFromToken2;
+            } else if (amountFromToken1 != null && amountFromToken2 == null) {
+                targetInput = token2;
+                amount = amountFromToken1;
+            } else if (amountFromToken1 != null && amountFromToken2 != null) {
+                targetInput = token1;
+                amount = amountFromToken2;
+            } else {
+                sender.sendMessage(configManager.getMessage("invalid-command"));
+                return;
+            }
+        } else {
+            sender.sendMessage(configManager.getMessage("invalid-command"));
+            return;
+        }
+
+        List<OfflinePlayer> targets = resolveTargets(source, targetInput);
+        if (targets.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("player-not-found"));
+            return;
+        }
+
+        adminRemoveChunk(sender, amount, targets);
+    }
+
+    private void handleAdminResetChunk(Source source, String input) {
+        CommandSender sender = source.source();
+        List<String> tokens = tokenize(input);
+
+        String targetInput;
+        if (tokens.isEmpty()) {
+            if (sender instanceof Player player) {
+                targetInput = player.getName();
+            } else {
+                sender.sendMessage(configManager.getMessage("invalid-command"));
+                return;
+            }
+        } else if (tokens.size() == 1) {
+            targetInput = tokens.get(0);
+        } else {
+            sender.sendMessage(configManager.getMessage("invalid-command"));
+            return;
+        }
+
+        List<OfflinePlayer> targets = resolveTargets(source, targetInput);
+        if (targets.isEmpty()) {
+            sender.sendMessage(configManager.getMessage("player-not-found"));
+            return;
+        }
+
+        adminResetChunk(sender, targets);
     }
 
     private void handleAdminDecayExempt(Source source, String input) {
@@ -497,6 +662,16 @@ public class AdminCommand implements LandClaimCommand {
         }
     }
 
+    private Integer tryParseNonNegativeInt(String input) {
+        if (input == null) return null;
+        try {
+            int val = Integer.parseInt(input);
+            return val >= 0 ? val : null;
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
+
     private void adminAddChunk(CommandSender sender, int amount, List<OfflinePlayer> targets) {
         FoliaScheduler.runAsync(plugin, () -> {
             for (OfflinePlayer target : targets) {
@@ -521,8 +696,6 @@ public class AdminCommand implements LandClaimCommand {
                 }
 
                 claimPlayer.setBonusClaimBlocks(claimPlayer.getBonusClaimBlocks() + amount);
-
-                // Save to DB
                 plugin.getDatabaseManager().getPlayerDao().savePlayer(claimPlayer).join();
 
                 if (inCache) {
@@ -530,6 +703,123 @@ public class AdminCommand implements LandClaimCommand {
                 }
 
                 sender.sendMessage(configManager.getMessage("admin-add-chunk-success", "<amount>", String.valueOf(amount), "<player>", target.getName() != null ? target.getName() : targetId.toString()));
+            }
+        });
+    }
+
+    private void adminSetChunk(CommandSender sender, int amount, List<OfflinePlayer> targets) {
+        FoliaScheduler.runAsync(plugin, () -> {
+            for (OfflinePlayer target : targets) {
+                if (target == null || target.getUniqueId() == null) continue;
+
+                UUID targetId = target.getUniqueId();
+                ClaimPlayer claimPlayer = plugin.getCacheManager().getPlayerCache().getIfPresent(targetId);
+                boolean inCache = claimPlayer != null;
+
+                if (!inCache) {
+                    try {
+                        claimPlayer = plugin.getDatabaseManager().getPlayerDao().getPlayer(targetId).join();
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Failed to load player data for admin set chunk: " + e.getMessage());
+                        sender.sendMessage(configManager.getMessage("player-not-found"));
+                        continue;
+                    }
+                }
+
+                if (claimPlayer == null) {
+                    claimPlayer = new ClaimPlayer(targetId);
+                }
+
+                claimPlayer.setBonusClaimBlocks(amount);
+                plugin.getDatabaseManager().getPlayerDao().savePlayer(claimPlayer).join();
+
+                if (inCache) {
+                    plugin.getCacheManager().getPlayerCache().put(targetId, claimPlayer);
+                }
+
+                int totalLimit = claimManager.getClaimLimit(targetId);
+                sender.sendMessage(configManager.getMessage("admin-set-chunk-success",
+                        "<amount>", String.valueOf(amount),
+                        "<player>", target.getName() != null ? target.getName() : targetId.toString(),
+                        "<limit>", String.valueOf(totalLimit)));
+            }
+        });
+    }
+
+    private void adminRemoveChunk(CommandSender sender, int amount, List<OfflinePlayer> targets) {
+        FoliaScheduler.runAsync(plugin, () -> {
+            for (OfflinePlayer target : targets) {
+                if (target == null || target.getUniqueId() == null) continue;
+
+                UUID targetId = target.getUniqueId();
+                ClaimPlayer claimPlayer = plugin.getCacheManager().getPlayerCache().getIfPresent(targetId);
+                boolean inCache = claimPlayer != null;
+
+                if (!inCache) {
+                    try {
+                        claimPlayer = plugin.getDatabaseManager().getPlayerDao().getPlayer(targetId).join();
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Failed to load player data for admin remove chunk: " + e.getMessage());
+                        sender.sendMessage(configManager.getMessage("player-not-found"));
+                        continue;
+                    }
+                }
+
+                if (claimPlayer == null) {
+                    claimPlayer = new ClaimPlayer(targetId);
+                }
+
+                int newBonus = Math.max(0, claimPlayer.getBonusClaimBlocks() - amount);
+                claimPlayer.setBonusClaimBlocks(newBonus);
+                plugin.getDatabaseManager().getPlayerDao().savePlayer(claimPlayer).join();
+
+                if (inCache) {
+                    plugin.getCacheManager().getPlayerCache().put(targetId, claimPlayer);
+                }
+
+                int totalLimit = claimManager.getClaimLimit(targetId);
+                sender.sendMessage(configManager.getMessage("admin-remove-chunk-success",
+                        "<amount>", String.valueOf(amount),
+                        "<player>", target.getName() != null ? target.getName() : targetId.toString(),
+                        "<limit>", String.valueOf(totalLimit)));
+            }
+        });
+    }
+
+    private void adminResetChunk(CommandSender sender, List<OfflinePlayer> targets) {
+        FoliaScheduler.runAsync(plugin, () -> {
+            for (OfflinePlayer target : targets) {
+                if (target == null || target.getUniqueId() == null) continue;
+
+                UUID targetId = target.getUniqueId();
+                ClaimPlayer claimPlayer = plugin.getCacheManager().getPlayerCache().getIfPresent(targetId);
+                boolean inCache = claimPlayer != null;
+
+                if (!inCache) {
+                    try {
+                        claimPlayer = plugin.getDatabaseManager().getPlayerDao().getPlayer(targetId).join();
+                    } catch (Exception e) {
+                        plugin.getLogger().severe("Failed to load player data for admin reset chunk: " + e.getMessage());
+                        sender.sendMessage(configManager.getMessage("player-not-found"));
+                        continue;
+                    }
+                }
+
+                if (claimPlayer == null) {
+                    claimPlayer = new ClaimPlayer(targetId);
+                }
+
+                claimPlayer.setBonusClaimBlocks(0);
+                plugin.getDatabaseManager().getPlayerDao().savePlayer(claimPlayer).join();
+
+                if (inCache) {
+                    plugin.getCacheManager().getPlayerCache().put(targetId, claimPlayer);
+                }
+
+                int totalLimit = claimManager.getClaimLimit(targetId);
+                sender.sendMessage(configManager.getMessage("admin-reset-chunk-success",
+                        "<player>", target.getName() != null ? target.getName() : targetId.toString(),
+                        "<limit>", String.valueOf(totalLimit)));
             }
         });
     }

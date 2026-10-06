@@ -262,6 +262,19 @@ public class LandClaimAPIImpl implements LandClaimAPI {
         });
     }
 
+    @Override
+    public CompletableFuture<Integer> setBonusBlocks(UUID playerId, int amount) {
+        return plugin.getDatabaseManager().getPlayerDao().getPlayer(playerId).thenApply(player -> {
+            if (player == null) {
+                player = new ClaimPlayer(playerId);
+            }
+            player.setBonusClaimBlocks(Math.max(0, amount));
+            plugin.getDatabaseManager().getPlayerDao().savePlayer(player);
+            plugin.getCacheManager().getPlayerCache().put(playerId, player);
+            return player.getBonusClaimBlocks();
+        });
+    }
+
     // ========== Utility ==========
 
     @Override

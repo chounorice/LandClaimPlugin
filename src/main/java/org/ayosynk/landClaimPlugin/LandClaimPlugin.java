@@ -389,6 +389,11 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
     }
 
     @Override
+    public java.util.concurrent.CompletableFuture<Integer> setBonusBlocks(java.util.UUID playerId, int amount) {
+        return apiDelegate.setBonusBlocks(playerId, amount);
+    }
+
+    @Override
     public long getServerTime() {
         return apiDelegate.getServerTime();
     }
