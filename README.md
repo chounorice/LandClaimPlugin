@@ -138,7 +138,7 @@ The API exposes:
 - `getClaimAt(...)`, `getClaimsByOwner(UUID)`, `getClaimByName(String)`, `getClaimById(UUID)`
 - `getAllClaimProfiles()` — every loaded claim, for global iteration (tax, leaderboards, etc.)
 - `transferClaim(Player actor, UUID profileId, UUID newOwnerId)` and `unclaimAll(Player actor, UUID profileId)` — programmatic ownership / claim management (the actor is either the new owner or has `landclaim.admin`)
-- `addBonusBlocks(UUID, int)` and `getBonusBlocks(UUID)` — for paid-claim-block plugins
+- `addBonusBlocks(UUID, int)`, `getBonusBlocks(UUID)`, and `setBonusBlocks(UUID, int)` — for paid-claim-block plugins
 - `isInCombat(Player)` — hook for combat-taggers
 - The full claim profile model — `getOwnedChunks()`, `getRoles()`, `getTrustedPlayerFlags()`, etc.
 
@@ -252,6 +252,9 @@ Jump directly to specific GUI panels without navigating through the main menu.
 | `/claim admin unclaim` | Force-unclaim the chunk you're standing in |
 | `/claim admin edit <player>` | Open any player's claim management GUI (supports `@p`, `@s`, `@r`) |
 | `/claim admin add chunk <player> <amount>` | Add bonus claim chunks to a player's limit *(Console & Player)*. Supports selectors (`@p`, `@s`, `@r`, `@a`), reverse ordering (`<amount> <player>`), and self-granting (`<amount>`). |
+| `/claim admin set chunk <player> <amount>` | Set a player's bonus claim chunks directly *(Console & Player, supports selectors, reverse ordering, and self-targeting)* |
+| `/claim admin remove chunk <player> <amount>` | Deduct bonus claim chunks from a player's allowance *(Console & Player, supports selectors, reverse ordering, and self-targeting)* |
+| `/claim admin reset chunk [player]` | Reset bonus claim chunks to 0 *(Console & Player, supports selectors, defaults to self for in-game players)* |
 | `/claim admin setalias <claim> <alias>` | Set or reset an owner's custom alias *(Console & Player)* |
 | `/claim admin trust list <owner>` | List players trusted by this owner *(Console & Player, supports selectors)* |
 | `/claim admin trust who <player>` | List claims where this player is trusted *(Console & Player, supports selectors)* |

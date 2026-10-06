@@ -67,6 +67,7 @@ if (profile != null) {
 | `adminUnclaimChunk(player, location)` | Force-unclaim chunk (requires admin permission) |
 | `addBonusBlocks(playerId, amount)` | Add/subtract bonus claim blocks |
 | `getBonusBlocks(playerId)` | Get player's bonus blocks |
+| `setBonusBlocks(playerId, amount)` | Set player's bonus claim blocks directly |
 
 ---
 

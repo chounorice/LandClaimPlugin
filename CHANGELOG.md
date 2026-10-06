@@ -2,6 +2,24 @@
 
 All notable changes to LandClaimPlugin will be documented in this file.
 
+## [3.4.0] - 2026-10-06
+
+### Added
+- **Configurable Claim Block Purchase Caps:**
+  - Added `maxBonusClaimBlocks` in `config.yml` (hard cap on bonus/bought chunks a player can hold; `0` = unlimited).
+  - Added `maxTotalClaimLimit` in `config.yml` (hard cap on total claim allowance including base limit and bonus blocks; `0` = unlimited).
+- **Admin Chunk Allowance Management Commands:**
+  - Added `/claim admin set chunk <player> <amount>`: Directly set a player's bonus chunk allowance. Supports `0` or positive values, Minecraft selectors (`@p`, `@s`, `@r`, `@a`), reverse argument ordering, and self-granting.
+  - Added `/claim admin remove chunk <player> <amount>`: Deduct bonus chunks from a player's allowance, clamped to 0 so players cannot have negative bonus chunks.
+  - Added `/claim admin reset chunk [player]`: Reset bonus chunk allowance back to 0 (defaults to self for in-game players).
+- **Developer API (`LandClaimAPI`):**
+  - Added `setBonusBlocks(UUID playerId, int amount)` to `LandClaimAPI` interface and plugin delegate, allowing addons to directly set bonus allowances.
+
+### Fixed
+- **Economy Purchase Limits Enforcement:**
+  - Fixed `/claim buy claim`, `/claim buy role`, `/claim buy member`, and `/claim buy warp` executing even when `limitPurchases.enabled` was set to `false` in `LandClaimPlugin-Economy`.
+  - Added bounds checking in `/claim buy claim` enforcing `maxBonusClaimBlocks` and `maxTotalClaimLimit` before charging player funds.
+
 ## [3.3.0] - 2026-10-01
 
 ### Added
