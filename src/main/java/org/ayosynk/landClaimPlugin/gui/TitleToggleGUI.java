@@ -15,6 +15,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class TitleToggleGUI {
 
@@ -22,18 +23,20 @@ public class TitleToggleGUI {
         FoliaScheduler.runAsync(plugin, () -> {
             TitleSettingsConfig config = plugin.getConfigManager().getTitleSettingsConfig();
 
-            String[] structure = {
-                    "F F F F F F F F F",
-                    "F F T F E F O F F",
-                    "F F F F F F F F F",
-                    "F F F S < S F F F"
-            };
+            String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                    Set.of("F", "T", "E", "O", "S", "<", "."), null, null,
+                    "Title Settings", plugin);
+            if (structure == null) {
+                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                        GuiHelper.MM.deserialize("<red>Title settings layout is invalid; check the plugin log.")));
+                return;
+            }
 
             Map<Character, SlotDefinition> ingredients = new HashMap<>();
             ingredients.put('F', GuiHelper.buildSlot(config.frame.material, config.frame.name,
-                    config.frame.lore));
+                    config.frame.lore, config.frame.itemModel));
             ingredients.put('S', GuiHelper.buildSlot(config.navSpacer.material, config.navSpacer.name,
-                    config.navSpacer.lore));
+                    config.navSpacer.lore, config.navSpacer.itemModel));
 
             // --- Toggle button ---
             List<String> toggleLore = new ArrayList<>(config.titleToggle.lore);
@@ -41,10 +44,10 @@ public class TitleToggleGUI {
             toggleLore.add("<gray>Status: "
                     + (profile.isEnterTitleEnabled() ? "<green>Enabled" : "<red>Disabled"));
             ingredients.put('T', GuiHelper.buildSlot(config.titleToggle.material, config.titleToggle.name,
-                    toggleLore, (p, e) -> {
+                    toggleLore, config.titleToggle.itemModel, (p, e) -> {
                         profile.setEnterTitleEnabled(!profile.isEnterTitleEnabled());
                         plugin.getDatabaseManager().getProfileDao().saveProfile(profile);
-                        open(player, profile, plugin);
+                        open(p, profile, plugin);
                     }));
 
             // --- Entry title button ---
@@ -58,12 +61,12 @@ public class TitleToggleGUI {
             entryLore.add("<dark_gray><i>Right-click to toggle Title/Subtitle");
 
             ingredients.put('E', GuiHelper.buildSlot(config.onEntry.material, config.onEntry.name,
-                    entryLore, (p, e) -> {
+                    entryLore, config.onEntry.itemModel, (p, e) -> {
                         if (e.getClick() == ClickType.RIGHT) {
                             // Toggle mode
                             profile.setEnterTitleMode(enterIsSub ? "TITLE" : "SUBTITLE");
                             plugin.getDatabaseManager().getProfileDao().saveProfile(profile);
-                            open(player, profile, plugin);
+                            open(p, profile, plugin);
                         } else {
                             // Open AnvilGUI to set text
                             AnvilInputGUI.open(plugin, p, "Enter Title", profile.getEnterTitle(),
@@ -98,12 +101,12 @@ public class TitleToggleGUI {
             leaveLore.add("<dark_gray><i>Right-click to toggle Title/Subtitle");
 
             ingredients.put('O', GuiHelper.buildSlot(config.onLeaveTitle.material, config.onLeaveTitle.name,
-                    leaveLore, (p, e) -> {
+                    leaveLore, config.onLeaveTitle.itemModel, (p, e) -> {
                         if (e.getClick() == ClickType.RIGHT) {
                             // Toggle mode
                             profile.setLeaveTitleMode(leaveIsSub ? "TITLE" : "SUBTITLE");
                             plugin.getDatabaseManager().getProfileDao().saveProfile(profile);
-                            open(player, profile, plugin);
+                            open(p, profile, plugin);
                         } else {
                             // Open AnvilGUI to set text
                             AnvilInputGUI.open(plugin, p, "Leave Title", profile.getLeaveTitle(),
@@ -129,13 +132,13 @@ public class TitleToggleGUI {
 
             ingredients.put('<',
                     GuiHelper.buildSlot(config.back.material, config.back.name, config.back.lore,
+                            config.back.itemModel,
                             (p, e) -> {
-                                p.closeInventory();
                                 ClaimSettingsGUI.open(p, profile, plugin);
                             }));
 
             Component title = GuiHelper.MM.deserialize(config.title);
-            CustomGui gui = new CustomGui(title, 4);
+            CustomGui gui = new CustomGui(title, config.rows);
             gui.fillFromStructure(structure, ingredients);
             gui.open(player);
         });

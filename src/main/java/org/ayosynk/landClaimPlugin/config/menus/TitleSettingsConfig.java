@@ -11,6 +11,12 @@ import java.util.List;
 public class TitleSettingsConfig extends OkaeriConfig {
 
     public String title = "Title Settings";
+    public int rows = 4;
+    public List<String> layout = List.of(
+            "F F F F F F F F F",
+            "F F T F E F O F F",
+            "F F F F F F F F F",
+            "F F F S < S F F F");
 
     @Comment("Main background spacing")
     public ItemConfig frame = new ItemConfig("GRAY_STAINED_GLASS_PANE", " ", List.of());
@@ -46,6 +52,8 @@ public class TitleSettingsConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         } // For Okaeri to instantiate

@@ -128,9 +128,14 @@ public class LandClaimExpansion extends PlaceholderExpansion {
                 ChunkPosition pos = new ChunkPosition(p.getLocation());
                 ClaimProfile profile = plugin.getClaimManager().getProfileAt(pos);
                 if (profile != null) {
-                    if (profile.isOwner(p.getUniqueId())) return "Owner";
-                    String role = profile.getMemberRole(p.getUniqueId());
-                    return role != null ? role : "Visitor";
+                    return switch (org.ayosynk.landClaimPlugin.managers.PermissionResolver
+                            .getPlayerStatus(profile, p.getUniqueId())) {
+                        case "owner" -> "Owner";
+                        case "resident" -> "Resident";
+                        case "trusted" -> "Trusted";
+                        case "banned" -> "Banned";
+                        default -> "Visitor";
+                    };
                 }
             }
             return "Visitor";

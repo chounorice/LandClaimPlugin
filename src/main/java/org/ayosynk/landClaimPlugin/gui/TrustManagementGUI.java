@@ -48,8 +48,6 @@ public class TrustManagementGUI {
                                                                         .deserialize("<yellow>" + displayName));
 
                                                         List<Component> lore = new ArrayList<>();
-                                                        lore.add(GuiHelper.MM.deserialize(
-                                                                        "<gray>Left-click: Edit permissions"));
                                                         lore.add(GuiHelper.MM.deserialize("<gray>Right-click: Remove"));
                                                         meta.lore(lore);
                                                         skull.setItemMeta(meta);
@@ -84,34 +82,36 @@ public class TrustManagementGUI {
                                                                                                 () -> TrustManagementGUI
                                                                                                                 .open(p, profile,
                                                                                                                                 plugin)));
-                                                        } else {
-                                                                // Left-click → edit permissions
-                                                                p.closeInventory();
-                                                                PlayerTrustPermissionGUI.open(p, profile, plugin,
-                                                                                trustedId);
                                                         }
                                                 };
                                         }
                                 });
                         }
 
-                        String[] structure = {
-                                        "x x x x x x x x x",
-                                        "x x x x x x x x x",
-                                        "x x x x x x x x x",
-                                        "P B B + < B B B N"
-                        };
+                        String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                                        Set.of("x", "B", "+", "<", "P", "N", "."), "P", "N",
+                                        "Trusted", plugin);
+                        if (structure == null) {
+                                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                                                GuiHelper.MM.deserialize("<red>Trusted menu layout is invalid; check the plugin log.")));
+                                return;
+                        }
 
                         Map<Character, SlotDefinition> ingredients = new HashMap<>();
                         ingredients.put('B', GuiHelper.buildSlot(config.bottomFill.material, config.bottomFill.name,
-                                        config.bottomFill.lore));
+                                        config.bottomFill.lore, config.bottomFill.itemModel));
                         ingredients.put('+', GuiHelper.buildSlot(config.addPlayer.material, config.addPlayer.name,
-                                        config.addPlayer.lore, (p, e) -> {
+                                        config.addPlayer.lore, config.addPlayer.itemModel, (p, e) -> {
                                                 OnlinePlayerSelectorGUI.open(p, plugin, target -> {
                                                         // Callback: target selected
                                                         if (profile.isOwner(target.getUniqueId())) {
                                                                 p.sendMessage(plugin.getConfigManager()
                                                                                 .getMessage("cannot-trust-self"));
+                                                                return;
+                                                        }
+                                                        if (profile.isMember(target.getUniqueId())) {
+                                                                p.sendMessage(plugin.getConfigManager()
+                                                                                .getMessage("already-in-claim"));
                                                                 return;
                                                         }
                                                         if (profile.isTrusted(target.getUniqueId())) {
@@ -120,30 +120,45 @@ public class TrustManagementGUI {
                                                                 return;
                                                         }
 
-                                                        plugin.getClaimManager().sendTrustInvite(p, target, profile);
+                                                        int maxTrusted = plugin.getConfigManager()
+                                                                        .getMaxTrustedPlayers(p);
+                                                        if (profile.getTrustedPlayerFlags().size() >= maxTrusted
+                                                                        && !p.hasPermission("landclaim.admin")) {
+                                                                p.sendMessage(GuiHelper.MM.deserialize(
+                                                                                "<red>This profile has reached its Trusted-player limit ("
+                                                                                                + maxTrusted + ")."));
+                                                                return;
+                                                        }
+                                                        if (!plugin.getClaimManager().addTrustedPlayer(p,
+                                                                        target.getUniqueId(), profile)) {
+                                                                return;
+                                                        }
+                                                        target.sendMessage(plugin.getConfigManager().getMessage(
+                                                                        "you-are-trusted",
+                                                                        "<owner>", profile.getDisplayOwnerName()));
                                                         TrustManagementGUI.open(p, profile, plugin);
                                                 }, () -> TrustManagementGUI.open(p, profile, plugin));
                                         }));
                         ingredients.put('<',
                                         GuiHelper.buildSlot(config.back.material, config.back.name, config.back.lore,
+                                                        config.back.itemModel,
                                                         (p, e) -> {
-                                                                p.closeInventory();
-                                                                MainMenuGUI.open(p, profile, plugin);
+                                                                ManageGUI.open(p, profile, plugin);
                                                         }));
 
                         Component title = GuiHelper.MM.deserialize(config.title);
-                        PaginatedGui gui = new PaginatedGui(title, 4, structure, ingredients, 'x');
+                        PaginatedGui gui = new PaginatedGui(title, config.rows, structure, ingredients, 'x');
 
-                        gui.setPrevButton(27,
+                        gui.setPrevButton(GuiLayoutValidator.findSlot(structure, "P"),
                                         GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name,
-                                                        config.previousPage.lore),
+                                                        config.previousPage.lore, config.previousPage.itemModel),
                                         GuiHelper.buildItemStack(config.bottomFill.material, config.bottomFill.name,
-                                                        config.bottomFill.lore));
-                        gui.setNextButton(35,
+                                                        config.bottomFill.lore, config.bottomFill.itemModel));
+                        gui.setNextButton(GuiLayoutValidator.findSlot(structure, "N"),
                                         GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name,
-                                                        config.nextPage.lore),
+                                                        config.nextPage.lore, config.nextPage.itemModel),
                                         GuiHelper.buildItemStack(config.bottomFill.material, config.bottomFill.name,
-                                                        config.bottomFill.lore));
+                                                        config.bottomFill.lore, config.bottomFill.itemModel));
 
                         gui.setContent(contentItems, player);
                         gui.open(player);

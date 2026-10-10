@@ -17,15 +17,20 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class VisitorSettingsGUI {
 
         public static void open(Player player, ClaimProfile profile, LandClaimPlugin plugin) {
-                if (plugin.getConfigManager().isVisitorSettingsLocked()) {
-                        player.sendMessage(plugin.getConfigManager().getMessage("visitor-settings-locked"));
-                        return;
+                open(player, profile, plugin, "visitor");
+        }
+
+        public static void open(Player player, ClaimProfile profile, LandClaimPlugin plugin, String category) {
+                String role = category.toLowerCase(java.util.Locale.ROOT);
+                if (!role.equals("resident") && !role.equals("trusted") && !role.equals("visitor")) {
+                        throw new IllegalArgumentException("Unknown flag category: " + category);
                 }
-                if (!GuiHelper.checkMenuPermission(player, "visitors", plugin)) {
+                if (!GuiHelper.checkMenuPermission(player, "flags", plugin)) {
                         return;
                 }
                 FoliaScheduler.runAsync(plugin, () -> {
@@ -43,9 +48,9 @@ public class VisitorSettingsGUI {
                                 contentItems.add(new GuiItem() {
                                         @Override
                                         public ItemStack render(Player viewer) {
-                                                boolean hasFlag = profile.hasVisitorFlag(flagId);
+                                                boolean hasFlag = profile.hasCategoryFlag(role, flagId);
                                                 ItemStack item = GuiHelper.buildItemStack(flagConfig.material,
-                                                                flagConfig.name, flagConfig.lore);
+                                                                flagConfig.name, flagConfig.lore, flagConfig.itemModel);
                                                 ItemMeta meta = item.getItemMeta();
                                                 if (meta != null) {
                                                         List<Component> lore = meta.lore();
@@ -73,11 +78,15 @@ public class VisitorSettingsGUI {
                                         @Override
                                         public org.ayosynk.landClaimPlugin.gui.framework.ClickAction clickAction() {
                                                 return (p, e) -> {
-                                                        if (profile.hasVisitorFlag(flagId)) {
-                                                                profile.removeVisitorFlag(flagId);
-                                                        } else {
-                                                                profile.addVisitorFlag(flagId);
+                                                        if (role.equals("visitor")
+                                                                        && plugin.getConfigManager().isVisitorSettingsLocked()) {
+                                                                p.sendMessage(plugin.getConfigManager()
+                                                                                .getMessage("visitor-settings-locked"));
+                                                                return;
                                                         }
+                                                        Set<String> flags = profile.getCategoryFlags(role);
+                                                        if (!flags.remove(flagId.toUpperCase(java.util.Locale.ROOT)))
+                                                                flags.add(flagId.toUpperCase(java.util.Locale.ROOT));
 
                                                         // Save asynchronously and invalidate cache
                                                         plugin.getDatabaseManager().getProfileDao().saveProfile(profile)
@@ -99,40 +108,60 @@ public class VisitorSettingsGUI {
                                 });
                         }
 
-                        String[] structure = {
-                                        "F F F F F F F F F",
-                                        "F x x x x x x x F",
-                                        "F x x x x x x x F",
-                                        "F x x x x x x x F",
-                                        "F x x x x x x x F",
-                                        "P F F F B F F F N",
-                        };
+                        String[] structure = validateLayout(config, plugin);
+                        if (structure == null) {
+                                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                                                GuiHelper.MM.deserialize("<red>Flags menu layout is invalid; check the plugin log.")));
+                                return;
+                        }
 
                         Map<Character, SlotDefinition> ingredients = new HashMap<>();
                         ingredients.put('F', new SlotDefinition(
                                         GuiHelper.buildItemStack(config.frame.material, config.frame.name,
-                                                        config.frame.lore)));
+                                                        config.frame.lore, config.frame.itemModel)));
                         ingredients.put('B', new SlotDefinition(
                                         GuiHelper.buildItemStack(config.back.material, config.back.name,
-                                                        config.back.lore),
-                                        (p, e) -> MainMenuGUI.open(p, profile, plugin)));
+                                                        config.back.lore, config.back.itemModel),
+                                        (p, e) -> ManageGUI.open(p, profile, plugin)));
+                        ingredients.put('R', GuiHelper.buildSlot(config.residentCategory.material,
+                                        config.residentCategory.name, config.residentCategory.lore,
+                                        config.residentCategory.itemModel, (p, e) ->
+                                                VisitorSettingsGUI.open(p, profile, plugin, "resident")));
+                        ingredients.put('T', GuiHelper.buildSlot(config.trustedCategory.material,
+                                        config.trustedCategory.name, config.trustedCategory.lore,
+                                        config.trustedCategory.itemModel, (p, e) ->
+                                                VisitorSettingsGUI.open(p, profile, plugin, "trusted")));
+                        ingredients.put('V', GuiHelper.buildSlot(config.visitorCategory.material,
+                                        config.visitorCategory.name, config.visitorCategory.lore,
+                                        config.visitorCategory.itemModel, (p, e) ->
+                                                VisitorSettingsGUI.open(p, profile, plugin, "visitor")));
 
-                        Component title = GuiHelper.MM.deserialize(config.title);
-                        PaginatedGui gui = new PaginatedGui(title, 6, structure, ingredients, 'x');
+                        Component title = GuiHelper.MM.deserialize(config.title + " <gray>(" + role + ")");
+                        PaginatedGui gui = new PaginatedGui(title, config.rows, structure, ingredients, 'x');
 
-                        gui.setPrevButton(45,
+                        gui.setPrevButton(findSlot(structure, "P"),
                                         GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name,
-                                                        config.previousPage.lore),
+                                        config.previousPage.lore, config.previousPage.itemModel),
                                         GuiHelper.buildItemStack(config.bottomFill.material, config.bottomFill.name,
-                                                        config.bottomFill.lore));
-                        gui.setNextButton(53,
+                                        config.bottomFill.lore, config.bottomFill.itemModel));
+                        gui.setNextButton(findSlot(structure, "N"),
                                         GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name,
-                                                        config.nextPage.lore),
+                                        config.nextPage.lore, config.nextPage.itemModel),
                                         GuiHelper.buildItemStack(config.bottomFill.material, config.bottomFill.name,
-                                                        config.bottomFill.lore));
+                                                        config.bottomFill.lore, config.bottomFill.itemModel));
 
                         gui.setContent(contentItems, player);
                         gui.open(player);
                 });
+        }
+
+        private static String[] validateLayout(VisitorSettingsConfig config, LandClaimPlugin plugin) {
+                return GuiLayoutValidator.validate(config.rows, config.layout,
+                        Set.of("F", "R", "T", "V", "B", "P", "N", "x", "."),
+                        "P", "N", "Flags", plugin);
+        }
+
+        private static int findSlot(String[] layout, String target) {
+                return GuiLayoutValidator.findSlot(layout, target);
         }
 }

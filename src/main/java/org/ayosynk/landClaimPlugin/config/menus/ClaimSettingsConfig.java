@@ -11,6 +11,13 @@ import java.util.List;
 public class ClaimSettingsConfig extends OkaeriConfig {
 
     public String title = "Claim Settings: {claim_name}";
+    public int rows = 5;
+    public List<String> layout = List.of(
+            "1 1 2 2 O 2 2 1 1",
+            "1 2 2 2 2 2 2 2 1",
+            "2 N C 2 W V T A 2",
+            "1 2 2 2 2 2 2 2 1",
+            "1 1 2 2 B 2 2 1 1");
 
     @Comment("Filler 1 (Primary filler)")
     public ItemConfig filler1 = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
@@ -38,13 +45,6 @@ public class ClaimSettingsConfig extends OkaeriConfig {
             "<light_purple>Change Claim Color",
             List.of(
                     "<gray>Change the display color for map integrations."));
-
-    @Comment("Roles Button")
-    public ItemConfig roles = new ItemConfig(
-            "WRITABLE_BOOK",
-            "<gold>Manage Roles",
-            List.of(
-                    "<gray>Manage custom roles and permissions within this claim."));
 
     @Comment("PvP Toggle Button")
     public ItemConfig pvpToggle = new ItemConfig(
@@ -87,6 +87,8 @@ public class ClaimSettingsConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         }

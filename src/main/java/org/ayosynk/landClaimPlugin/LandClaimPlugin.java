@@ -6,7 +6,6 @@ import org.ayosynk.landClaimPlugin.commands.CommandHandler;
 import org.ayosynk.landClaimPlugin.db.DatabaseManager;
 import org.ayosynk.landClaimPlugin.managers.*;
 import org.ayosynk.landClaimPlugin.models.ClaimProfile;
-import org.ayosynk.landClaimPlugin.models.Warp;
 import org.bstats.bukkit.Metrics;
 import org.bukkit.plugin.java.JavaPlugin;
 
@@ -29,12 +28,10 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
     private ClaimManager claimManager;
     private CombatManager combatManager;
     private VisualizationManager visualizationManager;
-    private WarpManager warpManager;
     private CommandHandler commandHandler;
     private ListenerManager listenerManager;
     private HookManager hookManager;
     private UpdateManager updateManager;
-    private MinimapManager minimapManager;
     private ClaimDecayManager claimDecayManager;
 
     // API delegate for interface methods
@@ -81,17 +78,10 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
             combatManager = new CombatManager(this);
             claimManager = new ClaimManager(this, configManager);
             visualizationManager = new VisualizationManager(this, claimManager, configManager);
-            warpManager = new WarpManager(this, configManager);
+            claimManager.initialize();
 
-            // Load persistent warp data before resolving claims
-            warpManager.loadFromDatabase().thenRun(() -> {
-                claimManager.initialize();
-                getLogger().info("Warp and Claim systems initialized.");
-            });
-
-            // 7. Initialize minimap and commands
-            minimapManager = new MinimapManager(this);
-            commandHandler = new CommandHandler(this, claimManager, configManager, visualizationManager, warpManager);
+            // 7. Initialize commands
+            commandHandler = new CommandHandler(this, claimManager, configManager, visualizationManager);
 
             // 8. Initialize and register listeners
             listenerManager = new ListenerManager(this, claimManager, configManager, visualizationManager);
@@ -129,12 +119,6 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
             // Shutdown commands executor gracefully
             if (commandHandler != null) {
                 commandHandler.shutdown();
-            }
-
-            // Save persistent data synchronously before exit
-            if (warpManager != null) {
-                warpManager.save();
-                getLogger().info("Saved warp data.");
             }
 
             // Clear visual effects
@@ -191,10 +175,6 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
         return visualizationManager;
     }
 
-    public WarpManager getWarpManager() {
-        return warpManager;
-    }
-
     public CommandHandler getCommandHandler() {
         return commandHandler;
     }
@@ -209,10 +189,6 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
 
     public UpdateManager getUpdateManager() {
         return updateManager;
-    }
-
-    public MinimapManager getMinimapManager() {
-        return minimapManager;
     }
 
     public ClaimDecayManager getClaimDecayManager() {
@@ -316,16 +292,6 @@ public class LandClaimPlugin extends JavaPlugin implements LandClaimAPI {
     @Override
     public boolean isTrusted(ClaimProfile profile, java.util.UUID playerId) {
         return apiDelegate.isTrusted(profile, playerId);
-    }
-
-    @Override
-    public java.util.Map<String, Warp> getWarps(java.util.UUID profileId) {
-        return apiDelegate.getWarps(profileId);
-    }
-
-    @Override
-    public Warp getWarp(java.util.UUID profileId, String warpName) {
-        return apiDelegate.getWarp(profileId, warpName);
     }
 
     @Override

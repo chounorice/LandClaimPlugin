@@ -1,5 +1,6 @@
 package org.ayosynk.landClaimPlugin.commands;
 
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.managers.ClaimManager;
 import org.ayosynk.landClaimPlugin.managers.ConfigManager;
@@ -15,10 +16,7 @@ import org.incendo.cloud.parser.standard.StringParser;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Handles: /claim trust list/add/remove
- * Manages trusted players on the owner's ClaimProfile.
- */
+/** Handles direct Trusted membership management. */
 public class TrustCommand implements LandClaimCommand {
 
     private final LandClaimPlugin plugin;
@@ -35,163 +33,105 @@ public class TrustCommand implements LandClaimCommand {
     public void register(PaperCommandManager<Source> manager, Command.Builder<PlayerSource> claimBuilder) {
         Command.Builder<PlayerSource> trustBuilder = claimBuilder.literal("trust");
 
-        // /claim trust list
-        manager.command(trustBuilder.literal("list")
+        manager.command(trustBuilder.literal("list").handler(context -> {
+            Player player = context.sender().source();
+            if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.trust", plugin)) return;
+            ClaimProfile profile = claimManager.getActiveProfile(player);
+            if (profile == null) {
+                player.sendMessage(configManager.getMessage("no-profile"));
+                return;
+            }
+            var trusted = profile.getTrustedPlayerFlags();
+            if (trusted.isEmpty()) {
+                player.sendMessage(configManager.getMessage("trust-list-empty"));
+                return;
+            }
+            player.sendMessage(configManager.getMessage("trust-list-header"));
+            for (UUID trustedId : trusted.keySet()) {
+                String name = Bukkit.getOfflinePlayer(trustedId).getName();
+                Set<String> flags = profile.getCategoryFlags("trusted");
+                player.sendMessage(configManager.getMessage("trust-list-entry",
+                        "<player>", name != null ? name : trustedId.toString(),
+                        "<flags>", String.join(", ", flags)));
+            }
+        }));
+
+        manager.command(trustBuilder.literal("add")
+                .required("player", StringParser.stringParser(), OfflinePlayerSuggestions.all())
                 .handler(context -> {
                     Player player = context.sender().source();
                     if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.trust", plugin)) return;
-                    ClaimProfile profile = claimManager.getProfile(player.getUniqueId());
+                    ClaimProfile profile = claimManager.getActiveProfile(player);
                     if (profile == null) {
                         player.sendMessage(configManager.getMessage("no-profile"));
                         return;
                     }
-
-                    var trusted = profile.getTrustedPlayerFlags();
-                    if (trusted.isEmpty()) {
-                        player.sendMessage(configManager.getMessage("trust-list-empty"));
-                        return;
-                    }
-
-                    player.sendMessage(configManager.getMessage("trust-list-header"));
-                    for (UUID trustedId : trusted.keySet()) {
-                        String name = Bukkit.getOfflinePlayer(trustedId).getName();
-                        if (name == null)
-                            name = trustedId.toString();
-                        Set<String> flags = trusted.get(trustedId);
-                        player.sendMessage(configManager.getMessage("trust-list-entry",
-                                "<player>", name, "<flags>", String.join(", ", flags)));
-                    }
-                }));
-
-        // /claim trust invite <player>
-        manager.command(trustBuilder.literal("invite")
-                .required("player", StringParser.stringParser(), OfflinePlayerSuggestions.playersOnly())
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.trust", plugin)) return;
-                    String targetName = context.get("player");
-
-                    ClaimProfile profile = claimManager.getProfile(player.getUniqueId());
-                    if (profile == null) {
-                        player.sendMessage(configManager.getMessage("no-profile"));
-                        return;
-                    }
-                    if (!profile.isOwner(player.getUniqueId())) {
+                    if (!profile.canManage(player)) {
                         player.sendMessage(configManager.getMessage("not-owner"));
                         return;
                     }
-
-                    Player target = Bukkit.getPlayer(targetName);
-                    if (target == null) {
-                        player.sendMessage(configManager.getMessage("player-not-online"));
-                        return;
-                    }
-                    UUID targetId = target.getUniqueId();
+                    String targetName = context.get("player");
+                    Player onlineTarget = Bukkit.getPlayer(targetName);
+                    @SuppressWarnings("deprecation")
+                    var offlineTarget = onlineTarget == null ? Bukkit.getOfflinePlayer(targetName) : null;
+                    UUID targetId = onlineTarget != null ? onlineTarget.getUniqueId() : offlineTarget.getUniqueId();
 
                     if (profile.isOwner(targetId)) {
                         player.sendMessage(configManager.getMessage("cannot-trust-self"));
+                        return;
+                    }
+                    if (profile.isMember(targetId)) {
+                        player.sendMessage(configManager.getMessage("already-in-claim"));
                         return;
                     }
                     if (profile.isTrusted(targetId)) {
                         player.sendMessage(configManager.getMessage("already-trusted"));
                         return;
                     }
-
-                    claimManager.sendTrustInvite(player, target, profile);
-                }));
-
-        // /claim trust accept
-        manager.command(trustBuilder.literal("accept")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.trust", plugin)) return;
-                    UUID playerId = player.getUniqueId();
-
-                    UUID ownerId = claimManager.getAndRemoveTrustInvite(playerId);
-                    if (ownerId == null) {
-                        player.sendMessage(configManager.getMessage("no-pending-trust-invite"));
+                    int maxTrusted = configManager.getMaxTrustedPlayers(player);
+                    if (profile.getTrustedPlayerFlags().size() >= maxTrusted
+                            && !player.hasPermission("landclaim.admin")) {
+                        player.sendMessage(MiniMessage.miniMessage().deserialize(
+                                "<red>This profile has reached its Trusted-player limit (" + maxTrusted + ")."));
                         return;
                     }
 
-                    ClaimProfile profile = claimManager.getProfile(ownerId);
-                    if (profile == null) {
-                        player.sendMessage(configManager.getMessage("invite-expired"));
+                    if (!claimManager.addTrustedPlayer(player, targetId, profile)) {
                         return;
                     }
-
-                    profile.addTrustedPlayer(playerId);
-                    plugin.getCacheManager().getProfileCache().put(ownerId, profile);
-                    claimManager.saveAndSync(profile);
-
-                    player.sendMessage(configManager.getMessage("trust-invite-accepted"));
-
-                    Player owner = Bukkit.getPlayer(ownerId);
-                    if (owner != null) {
-                        owner.sendMessage(configManager.getMessage("trust-added", "<player>", player.getName()));
+                    player.sendMessage(configManager.getMessage("trust-added", "<player>", targetName));
+                    if (onlineTarget != null) {
+                        onlineTarget.sendMessage(configManager.getMessage("you-are-trusted",
+                                "<owner>", profile.getDisplayOwnerName()));
                     }
                 }));
 
-        // /claim trust deny
-        manager.command(trustBuilder.literal("deny")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.trust", plugin)) return;
-                    UUID playerId = player.getUniqueId();
-
-                    UUID ownerId = claimManager.getAndRemoveTrustInvite(playerId);
-                    if (ownerId == null) {
-                        player.sendMessage(configManager.getMessage("no-pending-trust-invite"));
-                        return;
-                    }
-
-                    player.sendMessage(configManager.getMessage("trust-invite-denied"));
-
-                    Player owner = Bukkit.getPlayer(ownerId);
-                    if (owner != null) {
-                        owner.sendMessage(configManager.getMessage("trust-invite-was-denied",
-                                "<player>", player.getName()));
-                    }
-                }));
-
-        // /claim trust remove <player>
         manager.command(trustBuilder.literal("remove")
                 .required("player", StringParser.stringParser(), OfflinePlayerSuggestions.all())
                 .handler(context -> {
                     Player player = context.sender().source();
                     if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.trust", plugin)) return;
-                    String targetName = context.get("player");
-
-                    ClaimProfile profile = claimManager.getProfile(player.getUniqueId());
+                    ClaimProfile profile = claimManager.getActiveProfile(player);
                     if (profile == null) {
                         player.sendMessage(configManager.getMessage("no-profile"));
                         return;
                     }
-                    if (!profile.isOwner(player.getUniqueId())) {
+                    if (!profile.canManage(player)) {
                         player.sendMessage(configManager.getMessage("not-owner"));
                         return;
                     }
-
+                    String targetName = context.get("player");
                     Player target = Bukkit.getPlayer(targetName);
-                    UUID targetId;
-                    if (target != null) {
-                        targetId = target.getUniqueId();
-                    } else {
-                        // Try offline player by name
-                        @SuppressWarnings("deprecation")
-                        var offline = Bukkit.getOfflinePlayer(targetName);
-                        targetId = offline.getUniqueId();
-                    }
-
+                    @SuppressWarnings("deprecation")
+                    var offlineTarget = target == null ? Bukkit.getOfflinePlayer(targetName) : null;
+                    UUID targetId = target != null ? target.getUniqueId() : offlineTarget.getUniqueId();
                     if (!profile.isTrusted(targetId)) {
                         player.sendMessage(configManager.getMessage("not-trusted"));
                         return;
                     }
-
                     profile.removeTrustedPlayer(targetId);
-
-                    plugin.getCacheManager().getProfileCache().put(player.getUniqueId(), profile);
+                    plugin.getCacheManager().getProfileCache().put(profile.getProfileId(), profile);
                     claimManager.saveAndSync(profile);
-
                     player.sendMessage(configManager.getMessage("trust-removed", "<player>", targetName));
                 }));
     }

@@ -8,10 +8,8 @@ import org.ayosynk.landClaimPlugin.managers.ConfigManager;
 import org.ayosynk.landClaimPlugin.managers.VisualizationManager;
 import org.ayosynk.landClaimPlugin.models.ChunkPosition;
 import org.ayosynk.landClaimPlugin.models.ClaimProfile;
-import org.ayosynk.landClaimPlugin.models.Warp;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.incendo.cloud.Command;
 import org.incendo.cloud.paper.PaperCommandManager;
@@ -175,59 +173,34 @@ public class ClaimCommand implements LandClaimCommand {
                     FoliaScheduler.runForPlayer(plugin, player, () -> sendClaimInfo(player));
                 }));
 
-        // /claim setwarp <name> [public|private]
-        manager.command(claimBuilder.literal("setwarp")
-                .required("name", StringParser.stringParser())
-                .optional("visibility", StringParser.stringParser(), (context, input) -> java.util.concurrent.CompletableFuture.completedFuture(java.util.Arrays.asList(
-                        org.incendo.cloud.suggestion.Suggestion.suggestion("public"),
-                        org.incendo.cloud.suggestion.Suggestion.suggestion("private"))))
+        // /claim spawnpoint [remove]
+        manager.command(claimBuilder.literal("spawnpoint")
                 .handler(context -> {
                     Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.setwarp", plugin)) return;
-                    String name = context.get("name");
-                    String visibility = context.getOrDefault("visibility", null);
-                    FoliaScheduler.runForPlayer(plugin, player, () -> setWarp(player, name, visibility));
+                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(
+                            player, "landclaim.spawnpoint", plugin)) return;
+                    FoliaScheduler.runForPlayer(plugin, player, () -> setProfileSpawnpoint(player));
+                }));
+        manager.command(claimBuilder.literal("spawnpoint").literal("remove")
+                .handler(context -> {
+                    Player player = context.sender().source();
+                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(
+                            player, "landclaim.spawnpoint", plugin)) return;
+                    FoliaScheduler.runForPlayer(plugin, player, () -> removeProfileSpawnpoint(player));
                 }));
 
-        // /claim publicwarps
-        manager.command(claimBuilder.literal("publicwarps")
+        // /claim tp "<claim-owner-name>" "<claim>"
+        manager.command(claimBuilder.literal("tp")
+                .required("owner", StringParser.stringParser())
+                .required("claim", StringParser.stringParser())
                 .handler(context -> {
                     Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.warp", plugin)) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> PublicWarpsGUI.open(player, plugin));
-                }));
-
-        // /claim delwarp <name>
-        manager.command(claimBuilder.literal("delwarp")
-                .required("name", StringParser.stringParser())
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.delwarp", plugin)) return;
-                    String name = context.get("name");
-                    FoliaScheduler.runForPlayer(plugin, player, () -> delWarp(player, name));
-                }));
-
-        manager.command(claimBuilder.literal("warp")
-                .required("target", StringParser.stringParser())
-                .optional("subName", StringParser.stringParser())
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.warp", plugin)) return;
-                    String target = context.get("target");
-                    String subName = context.getOrDefault("subName", null);
-                    FoliaScheduler.runForPlayer(plugin, player, () -> teleportToWarp(player, target, subName));
-                }));
-
-        // /claim warps
-        manager.command(claimBuilder.literal("warps")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    ClaimProfile profile = claimManager.getActiveProfile(player);
-                    if (profile == null) {
-                        player.sendMessage(configManager.getMessage("no-profile"));
-                        return;
-                    }
-                    FoliaScheduler.runForPlayer(plugin, player, () -> WarpManagementGUI.open(player, profile, plugin));
+                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(
+                            player, "landclaim.teleport", plugin)) return;
+                    String ownerName = context.get("owner");
+                    String profileName = context.get("claim");
+                    FoliaScheduler.runForPlayer(plugin, player,
+                            () -> teleportToProfileSpawnpoint(player, ownerName, profileName));
                 }));
 
         // /claim profiles
@@ -279,91 +252,25 @@ public class ClaimCommand implements LandClaimCommand {
                     FoliaScheduler.runForPlayer(plugin, player, () -> ClaimSettingsGUI.open(player, profile, plugin));
                 }));
 
-        // /claim menu members
-        manager.command(claimBuilder.literal("menu").literal("members")
+        // /claim menu manage
+        manager.command(claimBuilder.literal("menu").literal("manage")
                 .handler(context -> {
                     Player player = context.sender().source();
                     ClaimProfile profile = resolveProfileForMenu(player);
                     if (profile == null) return;
                     if (!checkMenuPermission(player, profile, "MANAGE_MEMBERS")) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> MemberManagementGUI.open(player, profile, plugin));
+                    FoliaScheduler.runForPlayer(plugin, player, () -> ManageGUI.open(player, profile, plugin));
                 }));
 
-        // /claim menu roles
-        manager.command(claimBuilder.literal("menu").literal("roles")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    ClaimProfile profile = resolveProfileForMenu(player);
-                    if (profile == null) return;
-                    if (!checkMenuPermission(player, profile, "MANAGE_ROLES")) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> RoleManagementGUI.open(player, profile, plugin));
-                }));
-
-        // /claim menu trusted
-        manager.command(claimBuilder.literal("menu").literal("trusted")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    ClaimProfile profile = resolveProfileForMenu(player);
-                    if (profile == null) return;
-                    if (!checkMenuPermission(player, profile, "MANAGE_MEMBERS")) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> TrustManagementGUI.open(player, profile, plugin));
-                }));
-
-        // /claim menu visitors
-        manager.command(claimBuilder.literal("menu").literal("visitors")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (configManager.isVisitorSettingsLocked()) {
-                        player.sendMessage(configManager.getMessage("visitor-settings-locked"));
-                        return;
-                    }
-                    ClaimProfile profile = resolveProfileForMenu(player);
-                    if (profile == null) return;
-                    if (!checkMenuPermission(player, profile, "MANAGE_SETTINGS")) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> VisitorSettingsGUI.open(player, profile, plugin));
-                }));
-
-        // /claim menu allies
-        manager.command(claimBuilder.literal("menu").literal("allies")
+        // /claim menu flags
+        manager.command(claimBuilder.literal("menu").literal("flags")
                 .handler(context -> {
                     Player player = context.sender().source();
                     ClaimProfile profile = resolveProfileForMenu(player);
                     if (profile == null) return;
                     if (!checkMenuPermission(player, profile, "MANAGE_SETTINGS")) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> AllyManagementGUI.open(player, profile, plugin));
-                }));
-
-        // /claim minimap
-        manager.command(claimBuilder.literal("minimap")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.minimap", plugin)) return;
-                    plugin.getMinimapManager().giveOrOpenMinimap(player);
-                }));
-
-        // /claim map
-        manager.command(claimBuilder.literal("map")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.minimap", plugin)) return;
-                    plugin.getMinimapManager().giveOrOpenMinimap(player);
-                }));
-
-        // /claim menu map
-        manager.command(claimBuilder.literal("menu").literal("map")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!org.ayosynk.landClaimPlugin.gui.GuiHelper.checkPermission(player, "landclaim.minimap", plugin)) return;
-                    plugin.getMinimapManager().giveOrOpenMinimap(player);
-                }));
-
-        // /claim menu warps
-        manager.command(claimBuilder.literal("menu").literal("warps")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    ClaimProfile profile = resolveProfileForMenu(player);
-                    if (profile == null) return;
-                    FoliaScheduler.runForPlayer(plugin, player, () -> WarpManagementGUI.open(player, profile, plugin));
+                    FoliaScheduler.runForPlayer(plugin, player,
+                            () -> VisitorSettingsGUI.open(player, profile, plugin, "visitor"));
                 }));
 
         // ========== /claim rename <name> ==========
@@ -499,7 +406,7 @@ public class ClaimCommand implements LandClaimCommand {
                         .replace("<name>", claimName);
             } else {
                 String status = org.ayosynk.landClaimPlugin.managers.PermissionResolver.getPlayerStatus(profile, playerId);
-                if (status.equals("member") || status.equals("trusted")) {
+                if (status.equals("resident") || status.equals("trusted")) {
                     message = configManager.getActionBarMessage("actionbar-trusted")
                             .replace("<owner>", ownerName)
                             .replace("<claim>", claimName)
@@ -647,8 +554,10 @@ public class ClaimCommand implements LandClaimCommand {
                 return;
             }
 
-            // Must be owner or co-owner
-            if (!profile.isOwner(player.getUniqueId()) && !isCoOwner(profile, player.getUniqueId())) {
+            // Settings permissions are assigned through the profile's category flags.
+            if (!profile.canManage(player)
+                    && !org.ayosynk.landClaimPlugin.managers.PermissionResolver.hasPermission(
+                            profile, player.getUniqueId(), "MANAGE_SETTINGS")) {
                 player.sendMessage(configManager.getMessage("no-permission"));
                 return;
             }
@@ -711,17 +620,6 @@ public class ClaimCommand implements LandClaimCommand {
         });
     }
 
-    private boolean isCoOwner(ClaimProfile profile, UUID playerId) {
-        String roleName = profile.getMemberRole(playerId);
-        if (roleName != null) {
-            org.ayosynk.landClaimPlugin.models.Role role = profile.getRoleByName(roleName);
-            if (role != null) {
-                return role.getPriority() <= 10; // Assuming CoOwner priority is <= 10
-            }
-        }
-        return false;
-    }
-
     private void abandonClaim(Player player) {
         ChunkPosition pos = new ChunkPosition(player.getLocation().getChunk());
         ClaimProfile profile = claimManager.getProfileAt(pos);
@@ -754,143 +652,80 @@ public class ClaimCommand implements LandClaimCommand {
         player.sendMessage(configManager.getMessage("claim-info-owner", "<owner>", ownerName));
     }
 
-    private void setWarp(Player player, String name) {
-        setWarp(player, name, null);
-    }
-
-    private void setWarp(Player player, String name, String visibility) {
+    private void setProfileSpawnpoint(Player player) {
         ClaimProfile profile = claimManager.getActiveProfile(player);
         if (profile == null) {
             player.sendMessage(configManager.getMessage("no-profile"));
             return;
         }
-
-        ChunkPosition pos = new ChunkPosition(player.getLocation().getChunk());
-        ClaimProfile atLoc = claimManager.getProfileAt(pos);
-
-        if (atLoc == null || (!atLoc.isOwner(player.getUniqueId()) && !atLoc.getProfileId().equals(profile.getProfileId()))) {
-            player.sendMessage(configManager.getMessage("not-in-own-claim"));
+        if (!profile.canManage(player)) {
+            player.sendMessage(configManager.getMessage("not-owner"));
             return;
         }
-
-        if (plugin.getWarpManager().getWarpCount(profile.getProfileId()) >= plugin.getWarpManager()
-                .getWarpLimit(player)) {
-            player.sendMessage(configManager.getMessage("warp-limit-reached"));
+        ChunkPosition currentChunk = new ChunkPosition(player.getLocation().getChunk());
+        ClaimProfile atLocation = claimManager.getProfileAt(currentChunk);
+        if (atLocation == null || !atLocation.getProfileId().equals(profile.getProfileId())) {
+            player.sendMessage(configManager.getMessage("spawnpoint-must-be-in-claim"));
             return;
         }
-
-        org.ayosynk.landClaimPlugin.models.Warp existing = plugin.getWarpManager()
-                .getWarp(profile.getProfileId(), name);
-
-        boolean finalPublic;
-        if (visibility != null) {
-            finalPublic = visibility.equalsIgnoreCase("public");
-        } else {
-            finalPublic = existing != null && existing.isPublic();
-        }
-
-        boolean saved = plugin.getWarpManager().setWarp(profile.getProfileId(), name, player.getLocation(),
-                Material.ENDER_PEARL, finalPublic);
-        if (!saved) return;
-
-        profile.addWarp(new Warp(name, player.getLocation(), Material.ENDER_PEARL, finalPublic));
-        player.sendMessage(configManager.getMessage("warp-set", "<name>", name));
-        if (finalPublic) {
-            player.sendMessage(configManager.getMessage("warp-made-public", "<name>", name));
-        } else if (existing != null && existing.isPublic()) {
-            player.sendMessage(configManager.getMessage("warp-made-private", "<name>", name));
-        }
+        profile.setSpawnpoint(player.getLocation());
+        claimManager.saveAndSync(profile);
+        player.sendMessage(configManager.getMessage("spawnpoint-set"));
     }
 
-    private void delWarp(Player player, String name) {
+    private void removeProfileSpawnpoint(Player player) {
         ClaimProfile profile = claimManager.getActiveProfile(player);
         if (profile == null) {
             player.sendMessage(configManager.getMessage("no-profile"));
             return;
         }
-
-        if (plugin.getWarpManager().deleteWarp(profile.getProfileId(), name)) {
-            profile.removeWarp(name);
-            player.sendMessage(configManager.getMessage("warp-deleted", "<name>", name));
-        } else {
-            player.sendMessage(configManager.getMessage("warp-not-found", "<name>", name));
+        if (!profile.canManage(player)) {
+            player.sendMessage(configManager.getMessage("not-owner"));
+            return;
         }
+        if (profile.getSpawnpointWorldName() == null) {
+            player.sendMessage(configManager.getMessage("spawnpoint-not-set"));
+            return;
+        }
+        profile.setSpawnpoint(null);
+        claimManager.saveAndSync(profile);
+        player.sendMessage(configManager.getMessage("spawnpoint-removed"));
     }
 
-    private void teleportToWarp(Player player, String target, String subName) {
+    private void teleportToProfileSpawnpoint(Player player, String ownerName, String profileName) {
         if (plugin.getCombatManager().isInCombat(player)) {
             player.sendMessage(configManager.getMessage("in-combat"));
             return;
         }
-
-        String ownerQuery = null;
-        String warpName;
-
-        if (subName != null && !subName.isEmpty()) {
-            ownerQuery = target;
-            warpName = subName;
-        } else if (target.contains(":")) {
-            String[] parts = target.split(":", 2);
-            ownerQuery = parts[0];
-            warpName = parts[1];
-        } else {
-            warpName = target;
-        }
-
-        if (ownerQuery != null) {
-            Map.Entry<UUID, Warp> match = plugin.getWarpManager().findPublicWarpByOwner(ownerQuery, warpName);
-            if (match == null) {
-                player.sendMessage(configManager.getMessage("warp-not-found", "<name>", target));
-                return;
-            }
-            Warp warp = match.getValue();
-            String ownerName = Bukkit.getOfflinePlayer(match.getKey()).getName();
-            if (ownerName == null) ownerName = ownerQuery;
-            final String finalOwner = ownerName;
-            player.teleportAsync(warp.getLocation()).thenAccept(success -> {
-                if (success) {
-                    player.sendMessage(configManager.getMessage("publicwarps-teleported",
-                            "<owner>", finalOwner, "<name>", warp.getName()));
-                }
-            });
+        ClaimProfile profile = claimManager.getProfileByName(profileName);
+        if (profile == null || !matchesOwner(profile, ownerName)) {
+            player.sendMessage(configManager.getMessage("profile-spawnpoint-not-found"));
             return;
         }
-
-        ClaimProfile profile = claimManager.getActiveProfile(player);
-        if (profile != null) {
-            Warp ownWarp = profile.getWarp(warpName);
-            if (ownWarp != null) {
-                player.teleportAsync(ownWarp.getLocation()).thenAccept(success -> {
-                    if (success) {
-                        player.sendMessage(configManager.getMessage("warp-teleport", "<name>", ownWarp.getName()));
-                    }
-                });
-                return;
-            }
-        }
-
-        List<Map.Entry<UUID, Warp>> matches = plugin.getWarpManager().findAllPublicWarps(warpName);
-        if (matches.isEmpty()) {
-            player.sendMessage(configManager.getMessage("warp-not-found", "<name>", warpName));
+        boolean isMember = profile.isMember(player.getUniqueId());
+        boolean isTrusted = profile.isTrusted(player.getUniqueId());
+        boolean isAdmin = player.hasPermission("landclaim.admin");
+        if (profile.isBanned(player.getUniqueId()) || (!isAdmin && !profile.isOwner(player.getUniqueId())
+                && !isMember && !isTrusted)) {
+            player.sendMessage(configManager.getMessage("no-permission"));
             return;
         }
-
-        if (matches.size() == 1) {
-            Map.Entry<UUID, Warp> single = matches.get(0);
-            Warp warp = single.getValue();
-            String ownerName = Bukkit.getOfflinePlayer(single.getKey()).getName();
-            if (ownerName == null) ownerName = single.getKey().toString();
-            final String finalOwner = ownerName;
-            player.teleportAsync(warp.getLocation()).thenAccept(success -> {
-                if (success) {
-                    player.sendMessage(configManager.getMessage("publicwarps-teleported",
-                            "<owner>", finalOwner, "<name>", warp.getName()));
-                }
-            });
+        org.bukkit.Location destination = profile.getSpawnpoint();
+        if (destination == null || !profile.ownsChunk(new ChunkPosition(destination))) {
+            player.sendMessage(configManager.getMessage("spawnpoint-not-set"));
             return;
         }
+        player.teleportAsync(destination).thenAccept(success ->
+                FoliaScheduler.runForPlayer(plugin, player, () -> {
+                    if (success) player.sendMessage(configManager.getMessage("spawnpoint-teleported"));
+                    else player.sendMessage(configManager.getMessage("spawnpoint-teleport-failed"));
+                }));
+    }
 
-        org.ayosynk.landClaimPlugin.gui.WarpDisambiguationGUI.open(player, warpName, matches, plugin);
+    private boolean matchesOwner(ClaimProfile profile, String ownerName) {
+        if (profile.getDisplayOwnerName().equalsIgnoreCase(ownerName)) return true;
+        String actualName = Bukkit.getOfflinePlayer(profile.getOwnerId()).getName();
+        return actualName != null && actualName.equalsIgnoreCase(ownerName);
     }
 
     // ========== Helpers for new CLI commands ==========

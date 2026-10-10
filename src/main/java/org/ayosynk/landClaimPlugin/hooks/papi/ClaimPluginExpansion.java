@@ -85,52 +85,7 @@ public class ClaimPluginExpansion extends PlaceholderExpansion {
             return "$0.00";
         }
 
-        // 2. Roles
-        if (params.equalsIgnoreCase("roles_current")) {
-            if (player != null) {
-                ClaimProfile profile = plugin.getClaimManager().getActiveProfile(player);
-                if (profile != null) {
-                    return String.valueOf(Math.max(0, profile.getRoles().size() - 2));
-                }
-            }
-            return "0";
-        }
-
-        if (params.equalsIgnoreCase("roles_max")) {
-            if (player != null) {
-                ClaimProfile profile = plugin.getClaimManager().getActiveProfile(player);
-                if (profile != null) {
-                    int maxRoles = 2;
-                    for (org.bukkit.permissions.PermissionAttachmentInfo pai : player.getEffectivePermissions()) {
-                        if (pai.getPermission().startsWith("landclaim.createrole.")) {
-                            try {
-                                int limit = Integer.parseInt(pai.getPermission().substring("landclaim.createrole.".length()));
-                                if (limit + 2 > maxRoles) {
-                                    maxRoles = limit + 2;
-                                }
-                            } catch (NumberFormatException ignored) {}
-                        }
-                    }
-                    return String.valueOf(maxRoles - 2 + profile.getBonusRoleSlots());
-                }
-            }
-            return "0";
-        }
-
-        if (params.equalsIgnoreCase("cost_next_role_slot")) {
-            try {
-                Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("LandClaimPlugin-Economy");
-                if (ecoPlugin != null && ecoPlugin.isEnabled()) {
-                    Object config = ecoPlugin.getClass().getMethod("getEconomyConfig").invoke(ecoPlugin);
-                    double cost = (double) config.getClass().getField("roleSlotCost").get(config);
-                    Class<?> ecoHookClass = Class.forName("org.ayosynk.landclaimeconomy.util.EconomyHook");
-                    return (String) ecoHookClass.getMethod("format", double.class).invoke(null, cost);
-                }
-            } catch (Exception ignored) {}
-            return "$0.00";
-        }
-
-        // 3. Members
+        // 2. Residents
         if (params.equalsIgnoreCase("members_current")) {
             if (player != null) {
                 ClaimProfile profile = plugin.getClaimManager().getActiveProfile(player);
@@ -157,31 +112,6 @@ public class ClaimPluginExpansion extends PlaceholderExpansion {
                 if (ecoPlugin != null && ecoPlugin.isEnabled()) {
                     Object config = ecoPlugin.getClass().getMethod("getEconomyConfig").invoke(ecoPlugin);
                     double cost = (double) config.getClass().getField("memberSlotCost").get(config);
-                    Class<?> ecoHookClass = Class.forName("org.ayosynk.landclaimeconomy.util.EconomyHook");
-                    return (String) ecoHookClass.getMethod("format", double.class).invoke(null, cost);
-                }
-            } catch (Exception ignored) {}
-            return "$0.00";
-        }
-
-        // 4. Warps
-        if (params.equalsIgnoreCase("warps_current")) {
-            return String.valueOf(plugin.getWarpManager().getWarpCount(playerId));
-        }
-
-        if (params.equalsIgnoreCase("warps_max")) {
-            if (player != null) {
-                return String.valueOf(plugin.getWarpManager().getWarpLimit(player));
-            }
-            return "0";
-        }
-
-        if (params.equalsIgnoreCase("cost_next_warp_slot")) {
-            try {
-                Plugin ecoPlugin = Bukkit.getPluginManager().getPlugin("LandClaimPlugin-Economy");
-                if (ecoPlugin != null && ecoPlugin.isEnabled()) {
-                    Object config = ecoPlugin.getClass().getMethod("getEconomyConfig").invoke(ecoPlugin);
-                    double cost = (double) config.getClass().getField("warpSlotCost").get(config);
                     Class<?> ecoHookClass = Class.forName("org.ayosynk.landclaimeconomy.util.EconomyHook");
                     return (String) ecoHookClass.getMethod("format", double.class).invoke(null, cost);
                 }

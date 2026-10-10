@@ -3,14 +3,11 @@ package org.ayosynk.landClaimPlugin.api;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.models.ClaimProfile;
 import org.ayosynk.landClaimPlugin.models.ChunkPosition;
-import org.ayosynk.landClaimPlugin.models.Warp;
 import org.bukkit.Location;
-import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -154,7 +151,7 @@ public interface LandClaimAPI {
      *
      * @param profile The claim profile
      * @param playerId The player's UUID
-     * @return "owner", "member", "trusted", or "visitor"
+     * @return "owner", "resident", "trusted", "visitor", "banned", or "wilderness"
      */
     String getPlayerStatus(ClaimProfile profile, UUID playerId);
 
@@ -184,25 +181,6 @@ public interface LandClaimAPI {
      * @return true if the player is trusted
      */
     boolean isTrusted(ClaimProfile profile, UUID playerId);
-
-    // ========== Warp Operations ==========
-
-    /**
-     * Get all warps in a claim.
-     *
-     * @param profileId The profile UUID
-     * @return Map of warp name to Warp object
-     */
-    Map<String, Warp> getWarps(UUID profileId);
-
-    /**
-     * Get a specific warp.
-     *
-     * @param profileId The profile UUID
-     * @param warpName The warp name
-     * @return The Warp, or null if not found
-     */
-    Warp getWarp(UUID profileId, String warpName);
 
     // ========== Combat ==========
 

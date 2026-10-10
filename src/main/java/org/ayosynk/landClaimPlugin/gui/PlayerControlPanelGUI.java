@@ -14,6 +14,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 public class PlayerControlPanelGUI {
@@ -23,19 +24,18 @@ public class PlayerControlPanelGUI {
         FoliaScheduler.runAsync(plugin, () -> {
             PlayerControlPanelConfig config = plugin.getConfigManager().getPlayerControlPanelConfig();
 
-            String[] structure = {
-                    "F F F F F F F F F",
-                    "F F C F T F K F F",
-                    "F F F F F F F F F",
-                    ". . . X B B B . ."
-            };
+            String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                    Set.of("F", "C", "T", "K", "X", "B", "."), null, null,
+                    "Player control", plugin);
+            if (structure == null) {
+                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                        GuiHelper.MM.deserialize("<red>Player control layout is invalid; check the plugin log.")));
+                return;
+            }
 
             Map<Character, SlotDefinition> ingredients = new HashMap<>();
             ingredients.put('F', buildPlayerSlot(config.frame, targetPlayerName));
-            ingredients.put('C', buildPlayerSlotWithAction(config.changeRole, targetPlayerName, (p, e) -> {
-                p.closeInventory();
-                RoleSelectionGUI.open(p, profile, plugin, targetPlayerId, targetPlayerName);
-            }));
+            ingredients.put('C', buildPlayerSlot(config.changeRole, targetPlayerName));
             ingredients.put('T', buildPlayerSlotWithAction(config.transferOwnership, targetPlayerName, (p, e) -> {
                 // Transfer Ownership — only the actual owner can transfer
                 if (!profile.isOwner(p.getUniqueId())) {
@@ -86,7 +86,6 @@ public class PlayerControlPanelGUI {
                 });
             }));
             ingredients.put('B', buildPlayerSlotWithAction(config.back, targetPlayerName, (p, e) -> {
-                p.closeInventory();
                 MemberManagementGUI.open(p, profile, plugin);
             }));
 
@@ -97,7 +96,7 @@ public class PlayerControlPanelGUI {
             String windowTitle = config.title.replace("<Player>", targetPlayerName);
             Component title = GuiHelper.MM.deserialize(windowTitle);
 
-            CustomGui gui = new CustomGui(title, 4);
+            CustomGui gui = new CustomGui(title, config.rows);
             gui.fillFromStructure(structure, ingredients);
             gui.open(player);
         });
@@ -112,7 +111,7 @@ public class PlayerControlPanelGUI {
                 lore.add(line.replace("<Player>", targetName));
             }
         }
-        return GuiHelper.buildSlot(itemConfig.material, name, lore);
+        return GuiHelper.buildSlot(itemConfig.material, name, lore, itemConfig.itemModel);
     }
 
     private static SlotDefinition buildPlayerSlotWithAction(PlayerControlPanelConfig.ItemConfig itemConfig,
@@ -125,6 +124,6 @@ public class PlayerControlPanelGUI {
                 lore.add(line.replace("<Player>", targetName));
             }
         }
-        return GuiHelper.buildSlot(itemConfig.material, name, lore, action);
+        return GuiHelper.buildSlot(itemConfig.material, name, lore, itemConfig.itemModel, action);
     }
 }

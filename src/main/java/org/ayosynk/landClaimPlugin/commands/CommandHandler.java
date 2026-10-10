@@ -7,7 +7,6 @@ import org.ayosynk.landClaimPlugin.managers.ClaimManager;
 import org.ayosynk.landClaimPlugin.managers.ConfigManager;
 
 import org.ayosynk.landClaimPlugin.managers.VisualizationManager;
-import org.ayosynk.landClaimPlugin.managers.WarpManager;
 import org.ayosynk.landClaimPlugin.util.FoliaScheduler;
 import org.bukkit.entity.Player;
 import org.incendo.cloud.Command;
@@ -53,7 +52,7 @@ public class CommandHandler {
 
     public CommandHandler(LandClaimPlugin plugin, ClaimManager claimManager,
             ConfigManager configManager,
-            VisualizationManager visualizationManager, WarpManager warpManager) {
+            VisualizationManager visualizationManager) {
 
         ExecutionCoordinator<Source> coordinator;
         if (FoliaScheduler.isFolia()) {
@@ -124,7 +123,6 @@ public class CommandHandler {
                 new UnclaimCommand(plugin, claimManager, configManager),
                 new MemberCommand(plugin, claimManager, configManager),
                 new TrustCommand(plugin, claimManager, configManager),
-                new AllyCommand(plugin, claimManager, configManager),
                 new AbandonCommand(plugin, claimManager, configManager),
                 new BanCommand(plugin, claimManager, configManager),
                 new UnstuckCommand(plugin, claimManager, configManager),

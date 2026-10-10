@@ -28,7 +28,6 @@ public class MessagesConfig extends OkaeriConfig {
     public String adminTrustRemoved = "<red>[ADMIN] <green>Removed trust override for <gold><player></gold> in <gold><owner></gold>'s claim.";
     public String noProfileFound = "<red>That player does not have a claim profile.";
     public String memberInviteSent = "<green>Invite sent to <gold><player></gold>.";
-    public String allyAdded = "<green>You are now allied with <gold><player></gold>'s claim!";
     public String cannotInviteSelf = "<red>You cannot invite yourself to your own claim.";
     public String alreadyMember = "<red>That player is already a member of this claim.";
     public String invalidCommand = "<red>Invalid command usage.";
@@ -61,18 +60,13 @@ public class MessagesConfig extends OkaeriConfig {
 
     @Comment("Variables: <player>, <count>, <limit>, <seconds>, <world>, <x>, <z>")
 
-    public String warpSet = "<green>Warp <gold><name></gold> has been set!";
-    public String warpDeleted = "<red>Warp <gold><name></gold> has been deleted.";
-    public String warpTeleport = "<green>Teleported to warp <gold><name></gold>.";
-    public String warpNotFound = "<red>Warp <gold><name></gold> not found.";
-    public String warpLimitReached = "<red>You have reached your warp limit.";
-    public String warpLocationUpdated = "<green>Warp <gold><name></gold> location updated!";
-    public String warpIconUpdated = "<green>Warp <gold><name></gold> icon updated!";
-    public String warpMadePublic = "<green>Warp <gold><name></gold> is now <aqua>public<green>. Other players can find it via <gold>/claim publicwarps<green>.";
-    public String warpMadePrivate = "<yellow>Warp <gold><name></gold> is now private. Only your claim members can use it.";
-    public String publicwarpsNoWarps = "<gray>No public warps are available right now. Ask a claim owner to publish one!";
-    public String publicwarpsTeleported = "<green>Teleported to <gold><owner></gold>'s warp <gold><name></gold>.";
-    public String notInOwnClaim = "<red>You must be in your own claim to set a warp.";
+    public String spawnpointMustBeInClaim = "<red>You must be standing in a chunk owned by this profile to set its spawnpoint.";
+    public String spawnpointSet = "<green>Profile spawnpoint set.";
+    public String spawnpointRemoved = "<yellow>Profile spawnpoint removed.";
+    public String spawnpointNotSet = "<red>This profile does not have a spawnpoint set.";
+    public String profileSpawnpointNotFound = "<red>No matching owner and claim profile was found.";
+    public String spawnpointTeleported = "<green>Teleported to the profile spawnpoint.";
+    public String spawnpointTeleportFailed = "<red>Could not teleport to the profile spawnpoint.";
     public String unstuckCooldown = "<red>You must wait <seconds> seconds before using unstuck again.";
     public String unstuckSuccess = "<green>You have been safely unstuck.";
     public String unstuckNotInClaim = "<red>You are not inside a claim.";
@@ -137,21 +131,10 @@ public class MessagesConfig extends OkaeriConfig {
     public String playerNotOnline = "<red>That player is not currently online.";
     public String alreadyInClaim = "<red>That player is already a member of this claim.";
 
-    // Ally Messages
     public String claimNotFound = "<red>Could not find a claim with that name.";
-    public String cannotAllySelf = "<red>You cannot ally your own claim.";
-    public String alreadyAllied = "<red>You are already allied with that claim.";
-    public String allyInviteSent = "<green>Ally invite sent to <gold><name></gold>.";
-    public String allyInviteReceived = "<green>Your claim has received an ally invite from <gold><name></gold>!\n<gray>[<green><click:run_command:'/claim ally accept <name>'><hover:show_text:'Accept'>Accept</hover></click></green>] [<red><click:run_command:'/claim ally deny <name>'><hover:show_text:'Deny'>Deny</hover></click></red>]</gray>";
-    public String noAllyInviteFrom = "<red>No pending ally invite from claim <gold><name></gold>.";
-    public String specifyAllyName = "<red>Please specify the claim name: /claim ally accept <name>";
-    public String allyAccepted = "<green>You are now allied with <gold><name></gold>!";
-    public String allyAcceptedTarget = "<green><gold><name></gold> accepted your ally invite!";
-    public String allyDenied = "<red>Ally invite from <gold><name></gold> was denied.";
-    public String notAllied = "<red>You are not allied with that claim.";
-    public String allyRemoved = "<red>Alliance with <gold><name></gold> has been removed.";
 
-    public String trustAdded = "<green>Added trust to <player>.\n<yellow>Open <gold>/claim<yellow> → <gold>Trust Management<yellow> and left-click <player>'s head to grant per-player flags (block break/place, etc.).";
+    public String trustAdded = "<green><player> is now Trusted in your claim.";
+    public String youAreTrusted = "<green>You are now Trusted in <owner>'s claim.";
     public String trustRemoved = "<red>Removed trust from <player>";
     public String claimVisibilityToggled = "<green>Claim visibility toggled.";
     public String adminBypassedUnclaim = "<green>Bypassed ownership and unclaimed chunk.";
@@ -185,13 +168,6 @@ public class MessagesConfig extends OkaeriConfig {
     public String inviteWasDenied = "<red>Your invite was denied.";
     public String memberJoined = "<green><player> has joined your claim!";
     
-    // Trust Invites
-    public String trustInvited = "<green>Invited <player> to be trusted in your claim.";
-    public String trustInviteReceived = "<green>You have been invited to be trusted in <owner>'s claim! Type <click:run_command:/claim trust accept>/claim trust accept</click> to accept or <click:run_command:/claim trust deny>/claim trust deny</click> to decline.";
-    public String noPendingTrustInvite = "<red>You have no pending trust invites.";
-    public String trustInviteAccepted = "<green>You have accepted the trust invite!";
-    public String trustInviteDenied = "<red>You have denied the trust invite.";
-    public String trustInviteWasDenied = "<red>Your trust invite was denied.";
     // --- Leave Claim ---
     public String claimLeft = "<green>You have left <gold><name></gold>'s claim.";
     public String notInThatClaim = "<red>You are not a member or trusted player in that claim.";

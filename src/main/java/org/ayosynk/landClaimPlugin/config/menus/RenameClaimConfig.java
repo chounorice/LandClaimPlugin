@@ -11,6 +11,12 @@ import java.util.List;
 public class RenameClaimConfig extends OkaeriConfig {
 
     public String title = "Rename Claim";
+    public int rows = 4;
+    public List<String> layout = List.of(
+            "O O B B B B B O O",
+            "O B C B R B A B O",
+            "B B B B B B B B B",
+            "O B B S < S B B B");
 
     @Comment("Visual border separation")
     public ItemConfig outerFrame = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
@@ -49,6 +55,8 @@ public class RenameClaimConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         } // For Okaeri to instantiate

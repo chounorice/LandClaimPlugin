@@ -33,13 +33,22 @@ public final class GuiHelper {
     // --- Non-placeholder variants ---
 
     public static ItemStack buildItemStack(String material, String name, List<String> lore) {
-        return buildItemStackInternal(material, name, lore);
+        return buildItemStack(material, name, lore, null);
+    }
+
+    public static ItemStack buildItemStack(String material, String name, List<String> lore, String itemModel) {
+        return buildItemStackInternal(material, name, lore, itemModel);
     }
 
     // --- Placeholder variants (for GUIs that inject claim/player data) ---
 
     public static ItemStack buildItemStack(String material, String name, List<String> lore,
             ClaimProfile profile, Player player, String ownerName, String claimName) {
+        return buildItemStack(material, name, lore, profile, player, ownerName, claimName, null);
+    }
+
+    public static ItemStack buildItemStack(String material, String name, List<String> lore,
+            ClaimProfile profile, Player player, String ownerName, String claimName, String itemModel) {
         String resolvedName = name != null ? replacePlaceholders(name, profile, player, ownerName, claimName) : null;
         List<String> resolvedLore = null;
         if (lore != null && !lore.isEmpty()) {
@@ -48,7 +57,7 @@ public final class GuiHelper {
                 resolvedLore.add(replacePlaceholders(line, profile, player, ownerName, claimName));
             }
         }
-        return buildItemStackInternal(material, resolvedName, resolvedLore);
+        return buildItemStackInternal(material, resolvedName, resolvedLore, itemModel);
     }
 
     // --- SlotDefinition convenience builders ---
@@ -57,8 +66,17 @@ public final class GuiHelper {
         return new SlotDefinition(buildItemStack(material, name, lore));
     }
 
+    public static SlotDefinition buildSlot(String material, String name, List<String> lore, String itemModel) {
+        return new SlotDefinition(buildItemStack(material, name, lore, itemModel));
+    }
+
     public static SlotDefinition buildSlot(String material, String name, List<String> lore, ClickAction action) {
         return new SlotDefinition(buildItemStack(material, name, lore), action);
+    }
+
+    public static SlotDefinition buildSlot(String material, String name, List<String> lore, String itemModel,
+            ClickAction action) {
+        return new SlotDefinition(buildItemStack(material, name, lore, itemModel), action);
     }
 
     public static SlotDefinition buildSlot(String material, String name, List<String> lore,
@@ -67,8 +85,21 @@ public final class GuiHelper {
     }
 
     public static SlotDefinition buildSlot(String material, String name, List<String> lore,
+            ClaimProfile profile, Player player, String ownerName, String claimName, String itemModel) {
+        return new SlotDefinition(
+                buildItemStack(material, name, lore, profile, player, ownerName, claimName, itemModel));
+    }
+
+    public static SlotDefinition buildSlot(String material, String name, List<String> lore,
             ClaimProfile profile, Player player, String ownerName, String claimName, ClickAction action) {
         return new SlotDefinition(buildItemStack(material, name, lore, profile, player, ownerName, claimName), action);
+    }
+
+    public static SlotDefinition buildSlot(String material, String name, List<String> lore,
+            ClaimProfile profile, Player player, String ownerName, String claimName, String itemModel,
+            ClickAction action) {
+        return new SlotDefinition(
+                buildItemStack(material, name, lore, profile, player, ownerName, claimName, itemModel), action);
     }
 
     // --- Placeholder resolution ---
@@ -93,7 +124,8 @@ public final class GuiHelper {
 
     // --- Core builder logic ---
 
-    private static ItemStack buildItemStackInternal(String materialName, String name, List<String> lore) {
+    private static ItemStack buildItemStackInternal(String materialName, String name, List<String> lore,
+            String itemModel) {
         Material mat = Material.matchMaterial(materialName.toUpperCase());
         if (mat == null)
             mat = Material.STONE;
@@ -126,8 +158,24 @@ public final class GuiHelper {
             meta.lore(loreComponents);
         }
 
+        applyItemModel(meta, itemModel, materialName);
+
         item.setItemMeta(meta);
         return item;
+    }
+
+    public static void applyItemModel(ItemMeta meta, String itemModel, String itemName) {
+        if (itemModel == null || itemModel.isBlank()) return;
+        org.bukkit.NamespacedKey model = org.bukkit.NamespacedKey.fromString(itemModel);
+        if (model == null) {
+            LandClaimPlugin plugin = LandClaimPlugin.getInstance();
+            if (plugin != null) {
+                plugin.getLogger().warning("Invalid item_model '" + itemModel + "' for GUI item '"
+                        + itemName + "'. Expected a namespaced key such as 'minecraft:my_model'.");
+            }
+            return;
+        }
+        meta.setItemModel(model);
     }
 
     public static boolean checkMenuPermission(Player player, String menuName, LandClaimPlugin plugin) {

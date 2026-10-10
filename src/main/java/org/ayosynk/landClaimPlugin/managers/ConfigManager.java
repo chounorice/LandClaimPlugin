@@ -9,23 +9,13 @@ import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.config.MessagesConfig;
 import org.ayosynk.landClaimPlugin.config.PluginConfig;
 import org.ayosynk.landClaimPlugin.config.menus.MainMenuConfig;
+import org.ayosynk.landClaimPlugin.config.menus.ManageMenuConfig;
+import org.ayosynk.landClaimPlugin.config.menus.VisitorManagementConfig;
 import org.ayosynk.landClaimPlugin.config.menus.ClaimSettingsConfig;
 import org.ayosynk.landClaimPlugin.config.menus.VisitorSettingsConfig;
 import org.ayosynk.landClaimPlugin.config.menus.TrustManagementConfig;
-import org.ayosynk.landClaimPlugin.config.menus.PlayerTrustPermissionConfig;
 import org.ayosynk.landClaimPlugin.config.menus.MemberManagementConfig;
 import org.ayosynk.landClaimPlugin.config.menus.PlayerControlPanelConfig;
-import org.ayosynk.landClaimPlugin.config.menus.RoleSelectionConfig;
-import org.ayosynk.landClaimPlugin.config.menus.WarpManagementConfig;
-import org.ayosynk.landClaimPlugin.config.menus.WarpControlPanelConfig;
-import org.ayosynk.landClaimPlugin.config.menus.WarpChangeIconConfig;
-import org.ayosynk.landClaimPlugin.config.menus.PublicWarpsConfig;
-import org.ayosynk.landClaimPlugin.config.menus.AllyManagementConfig;
-import org.ayosynk.landClaimPlugin.config.menus.AllyControlPanelConfig;
-import org.ayosynk.landClaimPlugin.config.menus.AllyPremissionsConfig;
-import org.ayosynk.landClaimPlugin.config.menus.RoleManagementConfig;
-import org.ayosynk.landClaimPlugin.config.menus.RoleSetupConfig;
-import org.ayosynk.landClaimPlugin.config.menus.RoleEditConfig;
 import org.ayosynk.landClaimPlugin.config.menus.TitleSettingsConfig;
 import org.ayosynk.landClaimPlugin.config.menus.OnlinePlayerSelectorConfig;
 import org.ayosynk.landClaimPlugin.config.menus.ProfileSelectorConfig;
@@ -40,26 +30,16 @@ public class ConfigManager {
     private PluginConfig pluginConfig;
     private MessagesConfig messagesConfig;
     private MainMenuConfig mainMenuConfig;
+    private ManageMenuConfig manageMenuConfig;
+    private VisitorManagementConfig visitorManagementConfig;
     private ClaimSettingsConfig claimSettingsConfig;
     private VisitorSettingsConfig visitorSettingsConfig;
     private TrustManagementConfig trustManagementConfig;
-    private PlayerTrustPermissionConfig playerTrustPermissionConfig;
     private MemberManagementConfig memberManagementConfig;
     private PlayerControlPanelConfig playerControlPanelConfig;
-    private RoleSelectionConfig roleSelectionConfig;
-    private WarpManagementConfig warpManagementConfig;
-    private WarpControlPanelConfig warpControlPanelConfig;
-    private WarpChangeIconConfig warpChangeIconConfig;
-    private PublicWarpsConfig publicWarpsConfig;
-    private AllyManagementConfig allyManagementConfig;
-    private AllyControlPanelConfig allyControlPanelConfig;
-    private AllyPremissionsConfig allyPremissionsConfig;
-    private RoleManagementConfig roleManagementConfig;
-    private RoleSetupConfig roleSetupConfig;
     private TitleSettingsConfig titleSettingsConfig;
     private RenameClaimConfig renameClaimConfig;
     private ChangeClaimColorConfig changeClaimColorConfig;
-    private RoleEditConfig roleEditConfig;
     private OnlinePlayerSelectorConfig onlinePlayerSelectorConfig;
     private ProfileSelectorConfig profileSelectorConfig;
 
@@ -79,7 +59,7 @@ public class ConfigManager {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "config.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
         
         // Validate configuration
@@ -96,196 +76,115 @@ public class ConfigManager {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "locales/messages_" + pluginConfig.language + ".yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.mainMenuConfig = eu.okaeri.configs.ConfigManager.create(MainMenuConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/mainmenu.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
+        });
+        normalizeLegacyMainMenuLabels();
+
+        this.manageMenuConfig = eu.okaeri.configs.ConfigManager.create(ManageMenuConfig.class, (it) -> {
+            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
+            it.withBindFile(new File(plugin.getDataFolder(), "menus/Manage.yml"));
+            it.saveDefaults();
+            it.load();
+        });
+
+        this.visitorManagementConfig = eu.okaeri.configs.ConfigManager.create(VisitorManagementConfig.class, (it) -> {
+            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
+            it.withBindFile(new File(plugin.getDataFolder(), "menus/VisitorManagement.yml"));
+            it.saveDefaults();
+            it.load();
         });
 
         this.profileSelectorConfig = eu.okaeri.configs.ConfigManager.create(ProfileSelectorConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/profile-selector.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.claimSettingsConfig = eu.okaeri.configs.ConfigManager.create(ClaimSettingsConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/ClaimSettings.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.visitorSettingsConfig = eu.okaeri.configs.ConfigManager.create(VisitorSettingsConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/VisitorSettings.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         // Ensure new flags exist to fix backward compatibility for servers updating from older versions
-        boolean changed = false;
         if (!visitorSettingsConfig.flags.containsKey("CLAIM_LAND")) {
             visitorSettingsConfig.flags.put("CLAIM_LAND", new VisitorSettingsConfig.ItemConfig("GOLDEN_SHOVEL", "<yellow>Claim Land", java.util.List.of("<gray>Allow claiming land on behalf of owner.")));
-            changed = true;
         }
         if (!visitorSettingsConfig.flags.containsKey("ADMIN_MENU")) {
             visitorSettingsConfig.flags.put("ADMIN_MENU", new VisitorSettingsConfig.ItemConfig("COMMAND_BLOCK", "<gold>Admin Menu Access", java.util.List.of("<gray>Allow members to open the /claim menu.", "<gray>Does not allow abandoning the claim.")));
-            changed = true;
         }
         if (!visitorSettingsConfig.flags.containsKey("MANAGE_SETTINGS")) {
             visitorSettingsConfig.flags.put("MANAGE_SETTINGS", new VisitorSettingsConfig.ItemConfig("COMPARATOR", "<yellow>Manage Settings", java.util.List.of("<gray>Allow changing claim settings (PvP, Color, Toggles).")));
-            changed = true;
         }
         if (!visitorSettingsConfig.flags.containsKey("MANAGE_MEMBERS")) {
             visitorSettingsConfig.flags.put("MANAGE_MEMBERS", new VisitorSettingsConfig.ItemConfig("PLAYER_HEAD", "<yellow>Manage Members", java.util.List.of("<gray>Allow adding/removing members and trusted players.")));
-            changed = true;
         }
-        if (!visitorSettingsConfig.flags.containsKey("MANAGE_ROLES")) {
-            visitorSettingsConfig.flags.put("MANAGE_ROLES", new VisitorSettingsConfig.ItemConfig("WRITABLE_BOOK", "<yellow>Manage Roles", java.util.List.of("<gray>Allow creating, editing, and deleting roles.")));
-            changed = true;
-        }
-
-        if (changed) {
-            visitorSettingsConfig.save();
-        }
+        // Keep the new defaults in memory. Saving here rewrites Okaeri-managed
+        // @Comment metadata, which reintroduces comments administrators removed.
 
         this.trustManagementConfig = eu.okaeri.configs.ConfigManager.create(TrustManagementConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/TrustManagement.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
-
-        this.playerTrustPermissionConfig = eu.okaeri.configs.ConfigManager.create(PlayerTrustPermissionConfig.class,
-                (it) -> {
-                    it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-                    it.withBindFile(new File(plugin.getDataFolder(), "menus/PlayerTrustPermission.yml"));
-                    it.saveDefaults();
-                    it.load(true);
-                });
 
         this.memberManagementConfig = eu.okaeri.configs.ConfigManager.create(MemberManagementConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/MemberManagement.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.playerControlPanelConfig = eu.okaeri.configs.ConfigManager.create(PlayerControlPanelConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/PlayerControlPanel.yml"));
             it.saveDefaults();
-            it.load(true);
-        });
-
-        this.roleSelectionConfig = eu.okaeri.configs.ConfigManager.create(RoleSelectionConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/RoleSelection.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.warpManagementConfig = eu.okaeri.configs.ConfigManager.create(WarpManagementConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/WarpManagement.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.warpControlPanelConfig = eu.okaeri.configs.ConfigManager.create(WarpControlPanelConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/WarpControlPanel.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.warpChangeIconConfig = eu.okaeri.configs.ConfigManager.create(WarpChangeIconConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/WarpChangeIcon.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.publicWarpsConfig = eu.okaeri.configs.ConfigManager.create(PublicWarpsConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/PublicWarps.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.allyManagementConfig = eu.okaeri.configs.ConfigManager.create(AllyManagementConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/AllyManagement.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.allyControlPanelConfig = eu.okaeri.configs.ConfigManager.create(AllyControlPanelConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/AllyControlPanel.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.allyPremissionsConfig = eu.okaeri.configs.ConfigManager.create(AllyPremissionsConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/AllyPremissions.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.roleManagementConfig = eu.okaeri.configs.ConfigManager.create(RoleManagementConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/RoleManagement.yml"));
-            it.saveDefaults();
-            it.load(true);
-        });
-
-        this.roleSetupConfig = eu.okaeri.configs.ConfigManager.create(RoleSetupConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/RoleSetup.yml"));
-            it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.titleSettingsConfig = eu.okaeri.configs.ConfigManager.create(TitleSettingsConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/TitleSettings.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.renameClaimConfig = eu.okaeri.configs.ConfigManager.create(RenameClaimConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/RenameClaim.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.changeClaimColorConfig = eu.okaeri.configs.ConfigManager.create(ChangeClaimColorConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/ChangeClaimColor.yml"));
             it.saveDefaults();
-            it.load(true);
-        });
-
-        this.roleEditConfig = eu.okaeri.configs.ConfigManager.create(RoleEditConfig.class, (it) -> {
-            it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
-            it.withBindFile(new File(plugin.getDataFolder(), "menus/RoleEdit.yml"));
-            it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         this.onlinePlayerSelectorConfig = eu.okaeri.configs.ConfigManager.create(OnlinePlayerSelectorConfig.class, (it) -> {
             it.withConfigurer(new YamlBukkitConfigurer(), new SerdesBukkit());
             it.withBindFile(new File(plugin.getDataFolder(), "menus/OnlinePlayerSelector.yml"));
             it.saveDefaults();
-            it.load(true);
+            it.load();
         });
 
         blockedCommands = pluginConfig.blockCmd.stream().map(String::toLowerCase).toList();
@@ -298,31 +197,34 @@ public class ConfigManager {
         pluginConfig.load();
         messagesConfig.load();
         mainMenuConfig.load();
+        normalizeLegacyMainMenuLabels();
+        manageMenuConfig.load();
+        visitorManagementConfig.load();
         claimSettingsConfig.load();
         visitorSettingsConfig.load();
         trustManagementConfig.load();
-        playerTrustPermissionConfig.load();
         memberManagementConfig.load();
         playerControlPanelConfig.load();
-        roleSelectionConfig.load();
-        warpManagementConfig.load();
-        warpControlPanelConfig.load();
-        warpChangeIconConfig.load();
-        allyManagementConfig.load();
-        allyControlPanelConfig.load();
-        allyPremissionsConfig.load();
-        roleManagementConfig.load();
-        roleSetupConfig.load();
         titleSettingsConfig.load();
         renameClaimConfig.load();
         changeClaimColorConfig.load();
-        roleEditConfig.load();
         onlinePlayerSelectorConfig.load();
 
         blockedCommands = pluginConfig.blockCmd.stream().map(String::toLowerCase).toList();
         blockedWorlds = pluginConfig.blockWorld.stream().map(String::toLowerCase).toList();
         loadBannedWords();
         loadDefaultVisitorFlags();
+    }
+
+    private void normalizeLegacyMainMenuLabels() {
+        if (mainMenuConfig.trusted != null
+                && "Trusted Members Management".equalsIgnoreCase(mainMenuConfig.trusted.name)) {
+            mainMenuConfig.trusted.name = "<gold>Manage";
+        }
+        if (mainMenuConfig.visitors != null
+                && "Visitor Settings".equalsIgnoreCase(mainMenuConfig.visitors.name)) {
+            mainMenuConfig.visitors.name = "<yellow>Flags";
+        }
     }
 
     public PluginConfig getPluginConfig() {
@@ -337,6 +239,14 @@ public class ConfigManager {
         return mainMenuConfig;
     }
 
+    public ManageMenuConfig getManageMenuConfig() {
+        return manageMenuConfig;
+    }
+
+    public VisitorManagementConfig getVisitorManagementConfig() {
+        return visitorManagementConfig;
+    }
+
     public ClaimSettingsConfig getClaimSettingsConfig() {
         return claimSettingsConfig;
     }
@@ -349,56 +259,12 @@ public class ConfigManager {
         return trustManagementConfig;
     }
 
-    public PlayerTrustPermissionConfig getPlayerTrustPermissionConfig() {
-        return playerTrustPermissionConfig;
-    }
-
     public MemberManagementConfig getMemberManagementConfig() {
         return memberManagementConfig;
     }
 
     public PlayerControlPanelConfig getPlayerControlPanelConfig() {
         return playerControlPanelConfig;
-    }
-
-    public RoleSelectionConfig getRoleSelectionConfig() {
-        return roleSelectionConfig;
-    }
-
-    public WarpManagementConfig getWarpManagementConfig() {
-        return warpManagementConfig;
-    }
-
-    public WarpControlPanelConfig getWarpControlPanelConfig() {
-        return warpControlPanelConfig;
-    }
-
-    public WarpChangeIconConfig getWarpChangeIconConfig() {
-        return warpChangeIconConfig;
-    }
-
-    public PublicWarpsConfig getPublicWarpsConfig() {
-        return publicWarpsConfig;
-    }
-
-    public AllyManagementConfig getAllyManagementConfig() {
-        return allyManagementConfig;
-    }
-
-    public AllyControlPanelConfig getAllyControlPanelConfig() {
-        return allyControlPanelConfig;
-    }
-
-    public AllyPremissionsConfig getAllyPremissionsConfig() {
-        return allyPremissionsConfig;
-    }
-
-    public RoleManagementConfig getRoleManagementConfig() {
-        return roleManagementConfig;
-    }
-
-    public RoleSetupConfig getRoleSetupConfig() {
-        return roleSetupConfig;
     }
 
     public TitleSettingsConfig getTitleSettingsConfig() {
@@ -413,16 +279,27 @@ public class ConfigManager {
         return pluginConfig.maxMemberships;
     }
 
+    public int getMaxTrustedPlayers(org.bukkit.entity.Player player) {
+        int limit = Math.max(0, pluginConfig.maxTrustedPlayers);
+        for (org.bukkit.permissions.PermissionAttachmentInfo permission : player.getEffectivePermissions()) {
+            String node = permission.getPermission();
+            String prefix = "landclaim.trust.limit.";
+            if (!node.startsWith(prefix)) continue;
+            try {
+                limit = Math.max(limit, Integer.parseInt(node.substring(prefix.length())));
+            } catch (NumberFormatException ignored) {
+                // Ignore malformed permission nodes; valid numeric limits remain effective.
+            }
+        }
+        return limit;
+    }
+
     public ChangeClaimColorConfig getChangeClaimColorConfig() {
         return changeClaimColorConfig;
     }
 
     public ProfileSelectorConfig getProfileSelectorConfig() {
         return profileSelectorConfig;
-    }
-
-    public RoleEditConfig getRoleEditConfig() {
-        return roleEditConfig;
     }
 
     public OnlinePlayerSelectorConfig getOnlinePlayerSelectorConfig() {

@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 public class ProfileSelectorGUI {
 
@@ -69,7 +70,7 @@ public class ProfileSelectorGUI {
                                 lore.add(GuiHelper.MM.deserialize(config.roleOwnerLore));
                             } else {
                                 String role = profile.getMemberRole(player.getUniqueId());
-                                lore.add(GuiHelper.MM.deserialize(config.roleMemberLore.replace("<role>", role != null ? role : "Member")));
+                                lore.add(GuiHelper.MM.deserialize(config.roleMemberLore.replace("<role>", role != null ? role : "Resident")));
                             }
                             lore.add(GuiHelper.MM.deserialize(config.chunksClaimedLore.replace("<count>", String.valueOf(profile.getOwnedChunks().size()))));
                             lore.add(GuiHelper.MM.deserialize(""));
@@ -79,6 +80,9 @@ public class ProfileSelectorGUI {
                                 lore.add(GuiHelper.MM.deserialize(config.clickToActivateLore));
                             }
                             meta.lore(lore);
+                            GuiHelper.applyItemModel(meta,
+                                    isActive ? config.activeProfileItemModel : config.inactiveProfileItemModel,
+                                    isActive ? "active profile" : "inactive profile");
                             item.setItemMeta(meta);
                         }
                         return item;
@@ -92,7 +96,6 @@ public class ProfileSelectorGUI {
                                 plugin.getDatabaseManager().getPlayerDao().savePlayer(cp);
                                 p.sendMessage(plugin.getConfigManager().getMessage("profile-changed", "<name>", profile.getColoredName()));
                             }
-                            p.closeInventory();
                             // Re-open main menu with the new active profile
                             MainMenuGUI.open(p, profile, plugin);
                         };
@@ -100,27 +103,34 @@ public class ProfileSelectorGUI {
                 });
             }
 
-            String[] structure = {
-                    "F F F F F F F F F",
-                    "F x x x x x x x F",
-                    "F x x x x x x x F",
-                    "F x x x x x x x F",
-                    "F F F P C N F F F"
-            };
+            String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                    Set.of("F", "x", "P", "C", "N", "."), "P", "N",
+                    "Profile Selector", plugin);
+            if (structure == null) {
+                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                        GuiHelper.MM.deserialize("<red>Profile selector layout is invalid; check the plugin log.")));
+                return;
+            }
 
             Map<Character, SlotDefinition> ingredients = new HashMap<>();
-            ingredients.put('F', GuiHelper.buildSlot(config.filler.material, config.filler.name, config.filler.lore));
-            ingredients.put('C', GuiHelper.buildSlot(config.close.material, config.close.name, config.close.lore, (p, e) -> p.closeInventory()));
+            ingredients.put('F', GuiHelper.buildSlot(config.filler.material, config.filler.name,
+                    config.filler.lore, config.filler.itemModel));
+            ingredients.put('C', GuiHelper.buildSlot(config.close.material, config.close.name,
+                    config.close.lore, config.close.itemModel, (p, e) -> p.closeInventory()));
 
             Component title = GuiHelper.MM.deserialize(config.title);
-            PaginatedGui gui = new PaginatedGui(title, 5, structure, ingredients, 'x');
+            PaginatedGui gui = new PaginatedGui(title, config.rows, structure, ingredients, 'x');
 
-            gui.setPrevButton(39,
-                    GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name, config.previousPage.lore),
-                    GuiHelper.buildItemStack(config.filler.material, config.filler.name, config.filler.lore));
-            gui.setNextButton(41,
-                    GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name, config.nextPage.lore),
-                    GuiHelper.buildItemStack(config.filler.material, config.filler.name, config.filler.lore));
+            gui.setPrevButton(GuiLayoutValidator.findSlot(structure, "P"),
+                    GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name,
+                            config.previousPage.lore, config.previousPage.itemModel),
+                    GuiHelper.buildItemStack(config.filler.material, config.filler.name,
+                            config.filler.lore, config.filler.itemModel));
+            gui.setNextButton(GuiLayoutValidator.findSlot(structure, "N"),
+                    GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name,
+                            config.nextPage.lore, config.nextPage.itemModel),
+                    GuiHelper.buildItemStack(config.filler.material, config.filler.name,
+                            config.filler.lore, config.filler.itemModel));
 
             gui.setContent(contentItems, player);
             gui.open(player);

@@ -13,8 +13,7 @@ LandClaimPlugin (entry point)
 ├── ClaimManager          — Core claim business logic
 ├── CombatManager         — Combat tag integration
 ├── VisualizationManager  — Boundary rendering
-├── WarpManager           — Warp point management
-├── MinimapManager        — In-game held Territory Map canvas
+├── WarpManager           — Legacy warp loading for one-time spawnpoint migration
 ├── UpdateManager         — Modrinth async update checker
 ├── CommandHandler        — Cloud command framework
 ├── ListenerManager       — Event listener registration
@@ -32,7 +31,7 @@ LandClaimPlugin (entry point)
 5. CacheManager init (Caffeine caches)
 6. RedisManager init (optional cross-server sync)
 7. V1 → V2 SQL migration
-8. Business logic managers (Combat, Claim, Visualization, Warp)
+8. Business logic managers (Combat, Claim, Visualization, legacy warp migration)
 9. CommandHandler (Cloud framework + thread pool)
 10. ListenerManager (all Bukkit listeners)
 11. HookManager (WorldGuard, BlueMap, Dynmap, etc.)
@@ -41,7 +40,6 @@ LandClaimPlugin (entry point)
 ### Shutdown (`onDisable`)
 ```
 1. CommandHandler.shutdown() — drain thread pool
-2. WarpManager.save() — persist warp data
 3. VisualizationManager.cleanupLocalDisplays() — remove visual effects
 4. DatabaseManager.shutdown() — close connections
 5. RedisManager.shutdown() — close pub/sub
@@ -61,7 +59,6 @@ org.ayosynk.landClaimPlugin
 │   ├── AdminCommand.java         — /claim admin
 │   ├── MemberCommand.java        — /claim member
 │   ├── TrustCommand.java         — /claim trust
-│   └── AllyCommand.java          — /claim ally
 ├── config/                       — Okaeri configuration classes
 │   ├── PluginConfig.java         — Main config.yml
 │   ├── MessagesConfig.java       — Messages/locale
@@ -94,12 +91,7 @@ org.ayosynk.landClaimPlugin
 │   ├── ClaimSettingsGUI.java     — Claim settings
 │   ├── TrustManagementGUI.java   — Trust player management
 │   ├── MemberManagementGUI.java  — Member management
-│   ├── AllyManagementGUI.java    — Ally management
-│   ├── WarpManagementGUI.java    — Warp management
-│   ├── RoleManagementGUI.java    — Role management
 │   └── ...                       — 20+ specialized GUIs
-├── map/                          — Live held Territory Map
-│   └── TerritoryMapRenderer.java — 128x128 pixel MapRenderer canvas
 ├── hooks/                        — Third-party integrations
 │   ├── map/                      — Map plugin hooks
 │   └── combat/                   — Combat plugin hooks
@@ -119,13 +111,13 @@ org.ayosynk.landClaimPlugin
 │       └── ItemProtectionListener.java
 ├── managers/                     — Business logic managers
 │   ├── ClaimManager.java         — Claim CRUD + validation
-│   ├── PermissionResolver.java   — 4-tier permission chain
+│   ├── PermissionResolver.java   — Owner/Resident/Trusted/Visitor flag resolution
 │   ├── BlockPermissionResolver.java — Block → flag mapping
 │   ├── CacheManager.java         — Caffeine cache wrapper
 │   ├── ConfigManager.java        — Config lifecycle
 │   ├── CombatManager.java        — Combat tag detection
 │   ├── VisualizationManager.java — Boundary visualization
-│   ├── WarpManager.java          — Warp CRUD
+│   ├── WarpManager.java          — Legacy warp data loading for spawnpoint migration
 │   ├── RedisManager.java         — Redis pub/sub sync
 │   ├── HookManager.java          — Third-party plugin hooks
 │   └── ListenerManager.java      — Listener registration
@@ -147,31 +139,31 @@ org.ayosynk.landClaimPlugin
 
 ### ClaimProfile (Central Data Model)
 
-Each player owns exactly **one** `ClaimProfile`. This profile contains:
+Each claim is represented by one `ClaimProfile`. This profile contains:
 - **Owned chunks** — Set of `ChunkPosition` claimed by the owner
-- **Roles** — Custom permission roles (Member, CoOwner, user-defined)
-- **Members** — Player → Role assignments
-- **Trusted players** — Per-player permission flag overrides
-- **Allies** — Allied claim profiles with configurable inter-claim permissions
-- **Warps** — Named teleport points within claimed chunks
-- **Visitor flags** — Base permission layer for non-members
+- **Role categories** — Resident and Trusted memberships; Visitors are implicit
+- **Category flags** — Independent Resident, Trusted, and Visitor permission sets
+- **Trusted players** — Trusted membership; old per-player flag data is retained but no longer grants access
+- **Spawnpoint** — One profile destination for `/claim tp`
+- **Legacy data** — Old role, ally, and warp records remain stored to avoid destructive upgrades; old warp records are read only to migrate one eligible location to a profile spawnpoint.
 - **Settings** — Claim color, visualization mode, entry/exit titles
 
-### Permission Chain (4-Tier Priority)
+### Permission Chain
 
 ```
-Owner → Role → Trusted → Ally → Visitor
+Owner → Resident → Trusted → Visitor
 ```
 
-The first matching tier **decides** — no merging occurs. See `PermissionResolver.java:21`.
+Banned players are denied before this chain. Resident, Trusted, and Visitor each resolve against their own profile flag set; legacy custom roles and alliances no longer participate in permission resolution.
 
-| Tier | Source | Example |
+The first matching category decides its flag; permissions are not merged across categories. A ban denies access before role resolution. See `PermissionResolver.java`.
+
+| Category | Source | Example |
 |------|--------|---------|
-| Owner | `profile.isOwner(playerId)` | Always `true` |
-| Role | `profile.getMemberRole(playerId)` → `Role.hasFlag()` | Member, CoOwner, Custom |
-| Trusted | `profile.isTrusted(playerId)` → per-player flags | Individual overrides |
-| Ally | `profile.hasAlly(allyProfile)` → ally flags | Inter-claim access |
-| Visitor | `profile.hasVisitorFlag(flag)` | Default for everyone else |
+| Owner | `profile.isOwner(playerId)` | Owner bypass |
+| Resident | `profile.isMember(playerId)` → Resident category flags | Accepted membership |
+| Trusted | `profile.isTrusted(playerId)` → Trusted category flags | Direct `/claim trust add` |
+| Visitor | Otherwise → Visitor category flags | Everyone else |
 
 ### Claim Validation Flow
 
