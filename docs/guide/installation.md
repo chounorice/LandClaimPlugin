@@ -29,20 +29,17 @@ Development builds are automatically generated from the latest commits and may i
 - **Chunk-Based Claims** — 16×16 block protection zones, simple and intuitive.
 - **Auto-Claim** — Automatically claim chunks as you walk.
 - **Connected Claims** — Optionally require claims to be adjacent (with diagonal support).
-- **Held Territory Map (Minimap)** — Live 128×128 pixel radar in hand/off-hand or Item Frames.
+- **Profile Spawnpoint** — Set one spawnpoint per profile and allow authorized members to teleport to it.
 - **Unstuck Command** — A safe `/claim unstuck` feature that teleports trapped players to the nearest safe wilderness block.
 
 ### Permission System
-- **4-Tier Priority Chain** — Owner › Role › Trusted › Visitor — the first matching tier decides
-- **Custom Roles** — Create and configure custom roles (e.g., Member, CoOwner) with granular flag-based permissions
-- **Trusted Players** — Grant individual players specific permission overrides
-- **Visitor Settings** — Configure what non-members can do in your claims
+- **Role Categories** — Owner › Resident › Trusted › Visitor — the highest matching category decides
+- **Configurable Flags** — Set separate Resident, Trusted, and Visitor permissions per profile
+- **Trusted Players** — Grant Trusted access directly with `/claim trust add`
 - **25+ Permission Flags** — Doors, trapdoors, containers, workstations, animals, vehicles, redstone, and more
 
 ### Social Systems
-- **Member System** — Invite players to join your claim, assign them roles, and manage access
-- **Ally System** — Form mutual alliances between claims with configurable inter-claim permissions
-- **Warp System** — Set named warps within your claims with custom icons and per-player limits
+- **Resident System** — Invite players to join your claim as Residents and manage access
 
 ### Protection
 - **Block Protection** — Prevent unauthorized breaking and placing

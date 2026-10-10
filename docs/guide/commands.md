@@ -11,7 +11,6 @@ All commands use `/claim` (alias: `/c`) as the base.
 | `/claim profiles` | Open the active profile selector (Multi-Profile mode) |
 | `/claim create <name>` | Create a new claim profile with the given name |
 | `/claim auto` | Toggle auto-claim mode (claim chunks as you walk) |
-| `/claim map` | Receive the held live Territory Map item (alias: `/claim minimap`) |
 | `/claim menu` | Open the main claim management GUI |
 | `/claim info` | View info about the claim at your location |
 | `/claim visible` | Toggle claim boundary visualization |
@@ -23,10 +22,10 @@ All commands use `/claim` (alias: `/c`) as the base.
 | `/claim unstuck` | Safely teleport to the nearest wilderness block |
 | `/claim abandon` | Delete your entire active claim profile and all its chunks |
 | `/claim pvp <on/off> [time]` | Toggle PvP in the claim, with optional duration in seconds |
+| `/claim spawnpoint [remove]` | Set or remove this profile's spawnpoint |
+| `/claim tp <owner> <claim>` | Teleport to an authorized profile spawnpoint |
 | `/claim buy claim [amount]` | Buy extra claim blocks |
-| `/claim buy role` | Buy an additional custom role slot for your active profile |
 | `/claim buy member` | Buy an additional member slot for your active profile |
-| `/claim buy warp` | Buy an additional warp slot for your active profile |
 | `/claim sell <profile> <price>` | List a claim profile on the server-wide marketplace |
 | `/unclaim` | Unclaim the chunk you're standing in |
 | `/unclaim auto` | Toggle auto-unclaim mode (unclaim your owned chunks as you walk) |
@@ -42,13 +41,8 @@ These commands respect the same permission checks as clicking the GUI buttons.
 | Command | Permission Required | Description |
 |---|---|---|
 | `/claim menu settings` | `MANAGE_SETTINGS` | Open claim settings (color, PvP, visibility, titles) |
-| `/claim menu members` | `MANAGE_MEMBERS` | Open member management |
-| `/claim menu roles` | `MANAGE_ROLES` | Open role management |
-| `/claim menu trusted` | `MANAGE_MEMBERS` | Open trusted player management |
-| `/claim menu visitors` | `MANAGE_SETTINGS` | Open visitor settings |
-| `/claim menu allies` | `MANAGE_SETTINGS` | Open ally management |
-| `/claim menu map` | — | Receive the held Territory Map |
-| `/claim menu warps` | — | Open warp management |
+| `/claim menu manage` | `MANAGE_MEMBERS` | Open Resident, Trusted, and Visitor management |
+| `/claim menu flags` | `MANAGE_SETTINGS` | Open profile flags (Visitor category by default) |
 
 ## Member Commands
 
@@ -65,9 +59,7 @@ These commands respect the same permission checks as clicking the GUI buttons.
 
 | Command | Description |
 |---|---|
-| `/claim trust invite <player>` | Send a trust invitation to a player |
-| `/claim trust accept` | Accept a pending trust invitation |
-| `/claim trust deny` | Deny a pending trust invitation |
+| `/claim trust add <player>` | Grant Trusted access directly |
 | `/claim trust remove <player>` | Remove a trusted player |
 | `/claim trust list` | List all trusted players and their flags |
 
@@ -86,29 +78,6 @@ These commands respect the same permission checks as clicking the GUI buttons.
 ::: note Bedrock players
 Ban confirmations, abandon confirmations, unclaim-all confirmations, and AnvilInputGUI text prompts all send **native Bedrock forms** to Bedrock players when Geyser 2.x is installed, instead of the Java-only chat-prompt fallback.
 :::
-
-## Ally Commands
-
-| Command | Description |
-|---|---|
-| `/claim ally invite <name>` | Send an alliance request to another claim |
-| `/claim ally accept <name>` | Accept an alliance request |
-| `/claim ally deny <name>` | Deny an alliance request |
-| `/claim ally remove <name>` | Remove an existing alliance |
-
-## Warp Commands
-
-| Command | Description |
-|---|---|
-| `/claim setwarp <name>` | Set a private warp at your current location |
-| `/claim setwarp <name> public` | Set a warp and publish it to the server-wide public warps list |
-| `/claim setwarp <name> private` | Set a warp explicitly as private (or revert a public warp back to private) |
-| `/claim delwarp <name>` | Delete a warp from your active profile |
-| `/claim warp <name>` | Teleport to your warp, or a public warp. If multiple public warps share the same name, opens an interactive selection GUI |
-| `/claim warp <owner>:<name>` | Teleport directly to a specific player's public warp (e.g. `/claim warp Notch:shop`) |
-| `/claim warp <owner> <name>` | Space-separated alternative to teleport to a specific player's public warp |
-| `/claim warps` | Open the active claim's warp management GUI |
-| `/claim publicwarps` | Open the server-wide public warps browser GUI |
 
 ## Admin Commands
 
@@ -142,7 +111,6 @@ The `/claim admin add chunk` command is fully compatible with **DeluxeMenus** an
 |---|---|---|
 | `landclaim.*` | All LandClaim permissions | `false` |
 | `landclaim.claim` | Basic claiming ability | `true` |
-| `landclaim.minimap` | Access to the held Territory Map | `true` |
 | `landclaim.auto` | Use auto-claim mode | `true` |
 | `landclaim.admin` | Admin commands and bypass all protection | `op` |
 | `landclaim.decay.exempt` | Exempts player from automatic claim decay | `op` |
@@ -151,24 +119,20 @@ The `/claim admin add chunk` command is fully compatible with **DeluxeMenus** an
 | `landclaim.unclaim` | Unclaim the current chunk | `true` |
 | `landclaim.member` | Access to member subcommands | `true` |
 | `landclaim.trust` | Access to trust subcommands | `true` |
-| `landclaim.ally` | Access to ally subcommands | `true` |
 | `landclaim.ban` | Ban / unban players from your claim | `true` |
 | `landclaim.abandon` | Abandon active claim profile | `true` |
 | `landclaim.create` | Create new claim profiles | `true` |
 | `landclaim.visible` | Toggle boundary visibility | `true` |
 | `landclaim.toggle` | Switch visualization mode | `true` |
 | `landclaim.info` | View claim information | `true` |
-| `landclaim.setwarp` | Set claim warps | `true` |
-| `landclaim.delwarp` | Delete claim warps | `true` |
-| `landclaim.warp` | Teleport to claim warps | `true` |
 | `landclaim.pvp` | Toggle PvP state | `true` |
 | `landclaim.rename` | Rename claims | `true` |
 | `landclaim.color` | Change claim colors | `true` |
 | `landclaim.unclaimall` | Unclaim all land | `true` |
 | `landclaim.leave` | Leave a claim | `true` |
 | `landclaim.menu.*` | Access to all GUI menus | `true` |
-| `landclaim.menu.<menu>` | Access to a specific GUI menu (e.g. `mainmenu`, `claimsettings`, `membermanagement`, `rolemanagement`, `trustmanagement`, `visitorsettings`, `allymanagement`, `claimmap`, `warpmanagement`, `profileselector`) | `true` |
+| `landclaim.menu.<menu>` | Access to a specific GUI menu (e.g. `main`, `manage`, `flags`, `members`, `trusted`) | `true` |
 | `landclaim.limit.<n>` | Override the chunk claim limit | `false` |
 | `landclaim.list` | List claims | `true` |
-| `landclaim.warps.limit.<n>` | Override the warps limit | `false` |
-| `landclaim.createrole.<n>` | Override the max number of custom roles | `false` |
+| `landclaim.trust.limit.<n>` | Set a Trusted-player cap for a profile (default cap: 5) | `false` |
+| `landclaim.trust.limit.<n>` | Set a Trusted-player cap for a profile (default cap: 5) | `false` |

@@ -62,7 +62,6 @@ public class MemberManagementGUI {
                                         @Override
                                         public ClickAction clickAction() {
                                                 return (p, e) -> {
-                                                        p.closeInventory();
                                                         PlayerControlPanelGUI.open(p, profile, plugin, memberId,
                                                                         displayName);
                                                 };
@@ -70,18 +69,18 @@ public class MemberManagementGUI {
                                 });
                         }
 
-                        String[] structure = {
-                                        "x x x x x x x x x",
-                                        "x x x x x x x x x",
-                                        "x x x x x x x x x",
-                                        "P B B + < B B B N"
-                        };
+                        String[] structure = validateLayout(config, plugin);
+                        if (structure == null) {
+                                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                                                GuiHelper.MM.deserialize("<red>Resident menu layout is invalid; check the plugin log.")));
+                                return;
+                        }
 
                         Map<Character, SlotDefinition> ingredients = new HashMap<>();
                         ingredients.put('B', GuiHelper.buildSlot(config.bottomFill.material, config.bottomFill.name,
-                                        config.bottomFill.lore));
+                                        config.bottomFill.lore, config.bottomFill.itemModel));
                         ingredients.put('+', GuiHelper.buildSlot(config.inviteMember.material, config.inviteMember.name,
-                                        config.inviteMember.lore, (p, e) -> {
+                                        config.inviteMember.lore, config.inviteMember.itemModel, (p, e) -> {
                                                 OnlinePlayerSelectorGUI.open(p, plugin, target -> {
                                                         // Callback: target selected
                                                         if (profile.isOwner(target.getUniqueId())) {
@@ -95,6 +94,17 @@ public class MemberManagementGUI {
                                                                 return;
                                                         }
 
+                                                        int maxResidents = plugin.getConfigManager()
+                                                                        .getPluginConfig().maxClaimMembers
+                                                                        + profile.getBonusMemberSlots();
+                                                        if (profile.getMemberRoles().size() >= maxResidents
+                                                                        && !p.hasPermission("landclaim.admin")) {
+                                                                p.sendMessage(GuiHelper.MM.deserialize(
+                                                                                "<red>This profile has reached its Resident limit ("
+                                                                                                + maxResidents + ")."));
+                                                                return;
+                                                        }
+
                                                         // Logic from /claim member invite
                                                         plugin.getClaimManager().sendMemberInvite(p, target, profile);
                                                         MemberManagementGUI.open(p, profile, plugin);
@@ -102,27 +112,35 @@ public class MemberManagementGUI {
                                         }));
                         ingredients.put('<',
                                         GuiHelper.buildSlot(config.back.material, config.back.name, config.back.lore,
-                                                        (p, e) -> {
-                                                                p.closeInventory();
-                                                                MainMenuGUI.open(p, profile, plugin);
-                                                        }));
+                                                        config.back.itemModel,
+                                                        (p, e) -> ManageGUI.open(p, profile, plugin)));
 
                         Component title = GuiHelper.MM.deserialize(config.title);
-                        PaginatedGui gui = new PaginatedGui(title, 4, structure, ingredients, 'x');
+                        PaginatedGui gui = new PaginatedGui(title, config.rows, structure, ingredients, 'x');
 
-                        gui.setPrevButton(27,
+                        gui.setPrevButton(findSlot(structure, "P"),
                                         GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name,
-                                                        config.previousPage.lore),
+                                                        config.previousPage.lore, config.previousPage.itemModel),
                                         GuiHelper.buildItemStack(config.bottomFill.material, config.bottomFill.name,
-                                                        config.bottomFill.lore));
-                        gui.setNextButton(35,
+                                                        config.bottomFill.lore, config.bottomFill.itemModel));
+                        gui.setNextButton(findSlot(structure, "N"),
                                         GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name,
-                                                        config.nextPage.lore),
+                                                        config.nextPage.lore, config.nextPage.itemModel),
                                         GuiHelper.buildItemStack(config.bottomFill.material, config.bottomFill.name,
-                                                        config.bottomFill.lore));
+                                                        config.bottomFill.lore, config.bottomFill.itemModel));
 
                         gui.setContent(contentItems, player);
                         gui.open(player);
                 });
+        }
+
+        private static String[] validateLayout(MemberManagementConfig config, LandClaimPlugin plugin) {
+                return GuiLayoutValidator.validate(config.rows, config.layout,
+                                Set.of("x", "B", "+", "<", "P", "N", "."), "P", "N",
+                                "Resident", plugin);
+        }
+
+        private static int findSlot(String[] layout, String target) {
+                return GuiLayoutValidator.findSlot(layout, target);
         }
 }

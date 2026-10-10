@@ -29,13 +29,10 @@ Central business logic for claim operations.
 | `getSelection(UUID)` | `ChunkSelection` | Get player's chunk selection |
 | `clearSelection(UUID)` | `void` | Clear player's chunk selection |
 | `getTotalClaims()` | `int` | Total claimed chunks across all profiles |
-| `addAllyInvite(UUID, UUID)` | `void` | Add pending ally invite |
-| `removeAllyInvite(UUID, UUID)` | `void` | Remove pending ally invite |
-| `hasAllyInvite(UUID, UUID)` | `boolean` | Check pending ally invite |
 
 ### PermissionResolver
 
-Implements the 4-tier permission chain: Owner › Role › Trusted › Ally › Visitor.
+Resolves permissions in this order: Banned players are denied; Owner bypasses flags; otherwise Resident, Trusted, then Visitor category flags apply.
 
 | Method | Returns | Description |
 |--------|---------|-------------|
@@ -88,25 +85,6 @@ Detects combat-tagged players via hooked plugins.
 
 Supported hooks: DeluxeCombat, PvPManager, EternalCombat.
 
-### WarpManager
-
-Manages warp teleport points.
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `setWarp(UUID, String, Location, Material)` | `boolean` | Create/update a private warp |
-| `setWarp(UUID, String, Location, Material, boolean)` | `boolean` | Create/update a warp with explicit public visibility |
-| `toggleWarpPublic(UUID, String)` | `Boolean` | Toggle public/private state of a warp |
-| `deleteWarp(UUID, String)` | `boolean` | Delete a warp |
-| `getWarp(UUID, String)` | `Warp` | Get a specific warp |
-| `getWarps(UUID)` | `Map` | Get all warps for a profile/owner |
-| `getAllPublicWarps()` | `Map` | Get all public warps across the server |
-| `findAllPublicWarps(String)` | `List` | Find all public warps matching a name (collision handling) |
-| `findPublicWarpByOwner(String, String)` | `Entry` | Find a public warp by owner and name |
-| `getWarpLimit(Player)` | `int` | Get effective warp limit |
-| `getWarpCount(UUID)` | `int` | Get current warp count |
-| `loadFromDatabase()` | `CompletableFuture` | Load all warps from DB |
-
 ### VisualizationManager
 
 Renders claim boundaries using display entities or particles.
@@ -150,20 +128,18 @@ Central data model — one per player (or multiple in multi-profile mode).
 - `ownerId` — UUID of the owner
 - `name` — Display name
 - `ownedChunks` — Set of claimed chunk positions
-- `visitorFlags` — Base permission layer
-- `trustedPlayerFlags` — Per-player permission overrides
-- `roles` — Role definitions
-- `memberRoles` — Player to role assignments
-- `allyFlags` — Allied profiles with flags
-- `warps` — Named warps
+- `visitorFlags` — Visitor category permission layer
+- `categoryFlags` — Resident and Trusted permission sets
+- `trustedPlayerFlags` — Trusted membership records; legacy per-player flags no longer override the category
+- `memberRoles` — Resident membership assignments (legacy role names normalize to Resident)
+- `spawnpoint` — Optional single profile destination
+- `roles` — Legacy role definitions retained for migration compatibility; they do not participate in current permission resolution
 - `claimColor` — Hex color for visualization
 - `visualizationMode` — `DISPLAY_ENTITY` or `PARTICLE`
 - `enterTitleEnabled` — Entry title toggle
 - `enterTitle` / `leaveTitle` — MiniMessage titles
 
-**Default Roles:**
-- **Member** (priority 100): Basic interact (doors, containers, workstations, beds, redstone)
-- **CoOwner** (priority 10): All 25 flags
+**Role categories:** Owner, Resident, Trusted, and Visitor. Legacy custom role definitions remain in stored records for compatibility but do not participate in current permission resolution.
 
 ### Role
 
@@ -189,9 +165,9 @@ Per-player preferences (persisted in `lc_players`).
 | `visualizationMode` | String | Preferred visualization |
 | `bonusClaimBlocks` | int | Bonus claim limit |
 
-### Warp
+### Legacy Warp
 
-Named teleport point within a claim.
+Internal migration record only. The legacy table is read during startup to migrate one eligible warp to the profile spawnpoint; there are no warp CRUD APIs or player-facing warp menus/commands.
 
 | Field | Type | Description |
 |-------|------|-------------|
@@ -300,9 +276,6 @@ if (combatManager.isInCombat(player)) {
 | `ClaimDeleteEvent` | No | Dispatched when a claim is deleted or abandoned |
 | `ClaimTransferEvent` | No | Dispatched when claim ownership is transferred |
 | `ClaimMemberAddEvent` | Yes | Dispatched when a member invitation is accepted |
-| `ClaimTrustAddEvent` | Yes | Dispatched when a trust invitation is accepted |
-| `WarpCreateEvent` | Yes | Dispatched when a warp is set |
-| `WarpDeleteEvent` | No | Dispatched when a warp is deleted |
-| `WarpPrivacyChangeEvent` | Yes | Dispatched when a warp is toggled between public and private |
+| `ClaimTrustAddEvent` | Yes | Dispatched when Trusted access is granted |
 | `PlayerEnterClaimEvent` | No | Dispatched when a player enters a claim boundary |
 | `PlayerLeaveClaimEvent` | No | Dispatched when a player exits a claim boundary |

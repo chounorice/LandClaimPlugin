@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class ChangeClaimColorGUI {
@@ -41,31 +42,30 @@ public class ChangeClaimColorGUI {
                 FoliaScheduler.runAsync(plugin, () -> {
                         ChangeClaimColorConfig config = plugin.getConfigManager().getChangeClaimColorConfig();
 
-                        String[] structure = {
-                                        "F F F F F F F F F",
-                                        "F 0 1 2 3 4 5 6 F",
-                                        "F 7 8 9 A B C D F",
-                                        "F F F E X Y F F F",
-                                        "F F F N < N F F F"
-                        };
+                        String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                                        Set.of("F", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                                                "A", "B", "C", "D", "E", "X", "Y", "N", "<", "."),
+                                        null, null, "Claim Color", plugin);
+                        if (structure == null) {
+                                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                                                GuiHelper.MM.deserialize("<red>Claim color layout is invalid; check the plugin log.")));
+                                return;
+                        }
 
                         Map<Character, SlotDefinition> ingredients = new HashMap<>();
                         ingredients.put('F', GuiHelper.buildSlot(config.frameFill.material, config.frameFill.name,
-                                        config.frameFill.lore));
+                                        config.frameFill.lore, config.frameFill.itemModel));
                         ingredients.put('N', GuiHelper.buildSlot(config.navFrame.material, config.navFrame.name,
-                                        config.navFrame.lore));
+                                        config.navFrame.lore, config.navFrame.itemModel));
                         ingredients.put('<',
                                         GuiHelper.buildSlot(config.back.material, config.back.name, config.back.lore,
-                                                        (p, e) -> {
-                                                                p.closeInventory();
+                                                        config.back.itemModel, (p, e) -> {
                                                                 ClaimSettingsGUI.open(p, profile, plugin);
                                                         }));
 
                         // Custom HEX color input
                         ingredients.put('X', GuiHelper.buildSlot(config.customColor.material, config.customColor.name,
-                                        config.customColor.lore, (p, e) -> {
-                                                p.closeInventory();
-                                                p.closeInventory();
+                                        config.customColor.lore, config.customColor.itemModel, (p, e) -> {
                                                 AnvilInputGUI.open(plugin, p, "Hex Color", profile.getClaimColor() != null ? profile.getClaimColor() : "#00FF00", input -> {
                                                         FoliaScheduler.runTask(plugin, () -> {
                                                                 if (input == null) {
@@ -110,7 +110,7 @@ public class ChangeClaimColorGUI {
 
                         Component title = GuiHelper.MM.deserialize(config.title);
                         FoliaScheduler.runTask(plugin, () -> {
-                                CustomGui gui = new CustomGui(title, 5);
+                                CustomGui gui = new CustomGui(title, config.rows);
                                 gui.fillFromStructure(structure, ingredients);
                                 gui.open(player);
                         });
@@ -120,8 +120,8 @@ public class ChangeClaimColorGUI {
         private static SlotDefinition buildColorSlot(ChangeClaimColorConfig.ItemConfig itemConfig,
                         String colorName, ClaimProfile profile, LandClaimPlugin plugin) {
                 String hex = COLOR_HEX.getOrDefault(colorName, "#FFFFFF");
-                return GuiHelper.buildSlot(itemConfig.material, itemConfig.name, itemConfig.lore, (p, e) -> {
-                        p.closeInventory();
+                return GuiHelper.buildSlot(itemConfig.material, itemConfig.name, itemConfig.lore,
+                        itemConfig.itemModel, (p, e) -> {
                         applyColor(p, profile, plugin, hex);
                 });
         }

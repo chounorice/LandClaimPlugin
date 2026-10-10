@@ -9,6 +9,17 @@ import java.util.List;
 public class OnlinePlayerSelectorConfig extends OkaeriConfig {
 
     public String title = "Select Player";
+    public int rows = 6;
+    public List<String> layout = List.of(
+            "F F F F F F F F F",
+            "F x x x x x x x F",
+            "F x x x x x x x F",
+            "F x x x x x x x F",
+            "F x x x x x x x F",
+            "P B B B < B B B N");
+
+    @CustomKey("player_item_model")
+    public String playerItemModel;
 
     @Comment("Decorative border")
     public ItemConfig frame = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
@@ -38,6 +49,8 @@ public class OnlinePlayerSelectorConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         }

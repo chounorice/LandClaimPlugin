@@ -3,11 +3,12 @@ package org.ayosynk.landClaimPlugin.managers;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.models.ChunkPosition;
 import org.ayosynk.landClaimPlugin.models.ClaimProfile;
-import org.ayosynk.landClaimPlugin.models.Warp;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.ayosynk.landClaimPlugin.util.FoliaScheduler;
 
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -15,17 +16,11 @@ import java.util.concurrent.ConcurrentHashMap;
 public class ClaimManager {
     private final LandClaimPlugin plugin;
     private final ConfigManager configManager;
-
-    // Map of <ReceiverProfileOwnerId, Set<SenderProfileOwnerId>> for pending ally
-    // invites
-    private final Map<UUID, Set<UUID>> pendingAllyInvites = new HashMap<>();
+    private final WarpManager legacyWarpManager;
 
     // Pending member invites: Invitee UUID -> Owner UUID
     private final Map<UUID, UUID> pendingMemberInvites = new ConcurrentHashMap<>();
 
-    // Pending trust invites: Invitee UUID -> Owner UUID
-    private final Map<UUID, UUID> pendingTrustInvites = new ConcurrentHashMap<>();
-    
     // Spatial index: ChunkPosition -> ClaimProfile for O(1) lookups
     private final Map<ChunkPosition, ClaimProfile> chunkToProfileMap = new ConcurrentHashMap<>();
     
@@ -54,10 +49,18 @@ public class ClaimManager {
     public ClaimManager(LandClaimPlugin plugin, ConfigManager configManager) {
         this.plugin = plugin;
         this.configManager = configManager;
+        this.legacyWarpManager = new WarpManager(plugin);
     }
 
     public void initialize() {
-        loadProfiles();
+        legacyWarpManager.loadFromDatabase().handle((ignored, error) -> {
+            if (error != null) {
+                plugin.getLogger().severe("Failed to load legacy warp data for spawnpoint migration: "
+                        + error.getMessage());
+            }
+            loadProfiles();
+            return null;
+        });
     }
 
     // ========== Profile-based methods ==========
@@ -68,16 +71,40 @@ public class ClaimManager {
     public void loadProfiles() {
         plugin.getLogger().info("Loading claim profiles from database...");
         plugin.getDatabaseManager().getProfileDao().getAllProfiles()
-            .thenAccept(profiles -> {
+            .thenAccept(profiles -> FoliaScheduler.runTask(plugin, () -> {
                 // Clear existing spatial index
                 chunkToProfileMap.clear();
                 
                 for (ClaimProfile profile : profiles) {
-                    // Populate warps from WarpManager
-                    Map<String, Warp> profileWarps = plugin.getWarpManager().getWarps(profile.getProfileId());
+                    // Migrate a unique, still-owned legacy warp into the profile spawnpoint.
+                    Map<String, org.ayosynk.landClaimPlugin.models.Warp> profileWarps =
+                            legacyWarpManager.getWarps(profile.getProfileId());
                     if (!profileWarps.isEmpty()) {
-                        for (Warp warp : profileWarps.values()) {
-                            profile.addWarp(warp);
+                        if (profile.getSpawnpointWorldName() == null) {
+                            List<org.ayosynk.landClaimPlugin.models.Warp> candidates = profileWarps.values().stream()
+                                    .filter(warp -> warp.getLocation() != null
+                                            && warp.getWorldName() != null
+                                            && profile.ownsChunk(new ChunkPosition(warp.getWorldName(),
+                                                    (int) Math.floor(warp.getLocation().getX()) >> 4,
+                                                    (int) Math.floor(warp.getLocation().getZ()) >> 4)))
+                                    .toList();
+                            if (candidates.size() == 1) {
+                                org.ayosynk.landClaimPlugin.models.Warp candidate = candidates.get(0);
+                                World world = Bukkit.getWorld(candidate.getWorldName());
+                                if (world != null) {
+                                    Location location = candidate.getLocation();
+                                    profile.setSpawnpoint(new Location(world, location.getX(), location.getY(),
+                                            location.getZ(), location.getYaw(), location.getPitch()));
+                                    plugin.getDatabaseManager().getProfileDao().saveProfile(profile)
+                                            .exceptionally(saveError -> {
+                                                plugin.getLogger().severe("Failed to persist migrated spawnpoint for "
+                                                        + profile.getProfileId() + ": " + saveError.getMessage());
+                                                return null;
+                                            });
+                                    plugin.getLogger().info("Migrated the unique in-claim warp to the profile spawnpoint for "
+                                            + profile.getProfileId() + ".");
+                                }
+                            }
                         }
                     }
                     // Add to cache
@@ -89,7 +116,7 @@ public class ClaimManager {
                 }
                 plugin.getLogger().info("Loaded " + profiles.size() + " claim profiles. Spatial index contains " + 
                         chunkToProfileMap.size() + " chunks.");
-            })
+            }))
             .exceptionally(throwable -> {
                 plugin.getLogger().severe("Failed to load claim profiles: " + throwable.getMessage());
                 throwable.printStackTrace();
@@ -254,37 +281,6 @@ public class ClaimManager {
         return total;
     }
 
-    // ========== Ally Invites ==========
-
-    public void addAllyInvite(UUID receiverOwnerId, UUID senderOwnerId) {
-        pendingAllyInvites.computeIfAbsent(receiverOwnerId, k -> new HashSet<>()).add(senderOwnerId);
-    }
-
-    public void removeAllyInvite(UUID receiverOwnerId, UUID senderOwnerId) {
-        Set<UUID> senders = pendingAllyInvites.get(receiverOwnerId);
-        if (senders != null) {
-            senders.remove(senderOwnerId);
-            if (senders.isEmpty()) {
-                pendingAllyInvites.remove(receiverOwnerId);
-            }
-        }
-    }
-
-    public void sendAllyInvite(Player sender, ClaimProfile targetProfile) {
-        addAllyInvite(targetProfile.getProfileId(), sender.getUniqueId());
-        sender.sendMessage(configManager.getMessage("ally-invite-sent", "<name>", targetProfile.getName()));
-
-        Player targetOwner = Bukkit.getPlayer(targetProfile.getProfileId());
-        if (targetOwner != null && targetOwner.isOnline()) {
-            targetOwner.sendMessage(configManager.getMessage("ally-invite-received", "<name>", sender.getName()));
-        }
-    }
-
-    public boolean hasAllyInvite(UUID receiverOwnerId, UUID senderOwnerId) {
-        Set<UUID> senders = pendingAllyInvites.get(receiverOwnerId);
-        return senders != null && senders.contains(senderOwnerId);
-    }
-
     // ========== Member Invites ==========
 
     public void sendMemberInvite(Player sender, Player target, ClaimProfile profile) {
@@ -303,22 +299,17 @@ public class ClaimManager {
         return pendingMemberInvites.remove(inviteeId);
     }
 
-    // ========== Trust Invites ==========
-
-    public void sendTrustInvite(Player sender, Player target, ClaimProfile profile) {
+    public boolean addTrustedPlayer(Player sender, UUID targetId, ClaimProfile profile) {
         org.ayosynk.landClaimPlugin.api.event.ClaimTrustAddEvent event =
-                new org.ayosynk.landClaimPlugin.api.event.ClaimTrustAddEvent(profile, target.getUniqueId(), sender);
+                new org.ayosynk.landClaimPlugin.api.event.ClaimTrustAddEvent(profile, targetId, sender);
         Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return;
-
-        pendingTrustInvites.put(target.getUniqueId(), sender.getUniqueId());
-
-        sender.sendMessage(configManager.getMessage("trust-invited", "<player>", target.getName()));
-        target.sendMessage(configManager.getMessage("trust-invite-received", "<owner>", sender.getName()));
-    }
-
-    public UUID getAndRemoveTrustInvite(UUID inviteeId) {
-        return pendingTrustInvites.remove(inviteeId);
+        if (event.isCancelled()) {
+            return false;
+        }
+        profile.addTrustedPlayer(targetId);
+        plugin.getCacheManager().getProfileCache().put(profile.getProfileId(), profile);
+        saveAndSync(profile);
+        return true;
     }
 
     /**
@@ -393,13 +384,9 @@ public class ClaimManager {
                 // Find one where they have CLAIM_LAND
                 ClaimProfile delegated = null;
                 for (ClaimProfile mp : memberProfiles) {
-                    String roleName = mp.getMemberRole(playerId);
-                    if (roleName != null) {
-                        org.ayosynk.landClaimPlugin.models.Role role = mp.getRoleByName(roleName);
-                        if (role != null && role.hasFlag("CLAIM_LAND")) {
-                            delegated = mp;
-                            break;
-                        }
+                    if (mp.hasCategoryFlag("resident", "CLAIM_LAND")) {
+                        delegated = mp;
+                        break;
                     }
                 }
 
@@ -499,13 +486,9 @@ public class ClaimManager {
             java.util.List<ClaimProfile> memberProfiles = getMemberProfiles(playerId);
             if (!memberProfiles.isEmpty()) {
                 for (ClaimProfile mp : memberProfiles) {
-                    String roleName = mp.getMemberRole(playerId);
-                    if (roleName != null) {
-                        org.ayosynk.landClaimPlugin.models.Role role = mp.getRoleByName(roleName);
-                        if (role != null && role.hasFlag("CLAIM_LAND")) {
-                            targetProfile = mp;
-                            break;
-                        }
+                    if (mp.hasCategoryFlag("resident", "CLAIM_LAND")) {
+                        targetProfile = mp;
+                        break;
                     }
                 }
                 if (targetProfile == null) {

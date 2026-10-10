@@ -18,6 +18,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 public class OnlinePlayerSelectorGUI {
@@ -44,6 +45,7 @@ public class OnlinePlayerSelectorGUI {
                             List<Component> lore = new ArrayList<>();
                             lore.add(GuiHelper.MM.deserialize("<gray>Click to select"));
                             meta.lore(lore);
+                            GuiHelper.applyItemModel(meta, config.playerItemModel, "online player head");
                             head.setItemMeta(meta);
                         }
                         return head;
@@ -52,39 +54,44 @@ public class OnlinePlayerSelectorGUI {
                     @Override
                     public ClickAction clickAction() {
                         return (p, e) -> {
-                            p.closeInventory();
                             onSelect.accept(online);
                         };
                     }
                 });
             }
 
-            String[] structure = {
-                    "F F F F F F F F F",
-                    "F x x x x x x x F",
-                    "F x x x x x x x F",
-                    "F x x x x x x x F",
-                    "F x x x x x x x F",
-                    "P B B B < B B B N"
-            };
+            String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                    Set.of("F", "x", "B", "<", "P", "N", "."), "P", "N",
+                    "Online Player Selector", plugin);
+            if (structure == null) {
+                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                        GuiHelper.MM.deserialize("<red>Player selector layout is invalid; check the plugin log.")));
+                return;
+            }
 
             Map<Character, SlotDefinition> ingredients = new HashMap<>();
-            ingredients.put('F', GuiHelper.buildSlot(config.frame.material, config.frame.name, config.frame.lore));
-            ingredients.put('B', GuiHelper.buildSlot(config.navFill.material, config.navFill.name, config.navFill.lore));
-            ingredients.put('<', GuiHelper.buildSlot(config.back.material, config.back.name, config.back.lore, (p, e) -> {
-                p.closeInventory();
+            ingredients.put('F', GuiHelper.buildSlot(config.frame.material, config.frame.name,
+                    config.frame.lore, config.frame.itemModel));
+            ingredients.put('B', GuiHelper.buildSlot(config.navFill.material, config.navFill.name,
+                    config.navFill.lore, config.navFill.itemModel));
+            ingredients.put('<', GuiHelper.buildSlot(config.back.material, config.back.name,
+                    config.back.lore, config.back.itemModel, (p, e) -> {
                 onBack.run();
             }));
 
             Component title = GuiHelper.MM.deserialize(config.title);
-            PaginatedGui gui = new PaginatedGui(title, 6, structure, ingredients, 'x');
+            PaginatedGui gui = new PaginatedGui(title, config.rows, structure, ingredients, 'x');
 
-            gui.setPrevButton(45,
-                    GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name, config.previousPage.lore),
-                    GuiHelper.buildItemStack(config.navFill.material, config.navFill.name, config.navFill.lore));
-            gui.setNextButton(53,
-                    GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name, config.nextPage.lore),
-                    GuiHelper.buildItemStack(config.navFill.material, config.navFill.name, config.navFill.lore));
+            gui.setPrevButton(GuiLayoutValidator.findSlot(structure, "P"),
+                    GuiHelper.buildItemStack(config.previousPage.material, config.previousPage.name,
+                            config.previousPage.lore, config.previousPage.itemModel),
+                    GuiHelper.buildItemStack(config.navFill.material, config.navFill.name,
+                            config.navFill.lore, config.navFill.itemModel));
+            gui.setNextButton(GuiLayoutValidator.findSlot(structure, "N"),
+                    GuiHelper.buildItemStack(config.nextPage.material, config.nextPage.name,
+                            config.nextPage.lore, config.nextPage.itemModel),
+                    GuiHelper.buildItemStack(config.navFill.material, config.navFill.name,
+                            config.navFill.lore, config.navFill.itemModel));
 
             gui.setContent(contentItems, player);
             gui.open(player);

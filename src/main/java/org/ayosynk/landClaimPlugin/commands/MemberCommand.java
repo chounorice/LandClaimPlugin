@@ -185,8 +185,15 @@ public class MemberCommand implements LandClaimCommand {
                         return;
                     }
 
-                    // Add as "Member" role by default
-                    profile.setMemberRole(playerId, "Member");
+                    int maxResidents = configManager.getPluginConfig().maxClaimMembers + profile.getBonusMemberSlots();
+                    if (profile.getMemberRoles().size() >= maxResidents && !player.hasPermission("landclaim.admin")) {
+                        player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
+                            .deserialize("<red>This profile has reached its Resident limit (" + maxResidents + ")."));
+                        return;
+                    }
+
+                    profile.removeTrustedPlayer(playerId);
+                    profile.setMemberRole(playerId, "Resident");
 
                     plugin.getCacheManager().getProfileCache().put(ownerId, profile);
                     claimManager.saveAndSync(profile);

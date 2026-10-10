@@ -11,6 +11,13 @@ import java.util.List;
 public class ChangeClaimColorConfig extends OkaeriConfig {
 
     public String title = "Change Color";
+    public int rows = 5;
+    public List<String> layout = List.of(
+            "F F F F F F F F F",
+            "F 0 1 2 3 4 5 6 F",
+            "F 7 8 9 A B C D F",
+            "F F F E X Y F F F",
+            "F F F N < N F F F");
 
     @Comment("Background framing")
     public ItemConfig frameFill = new ItemConfig("GRAY_STAINED_GLASS_PANE", " ", List.of());
@@ -67,6 +74,8 @@ public class ChangeClaimColorConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         } // For Okaeri to instantiate

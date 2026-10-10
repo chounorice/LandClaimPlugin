@@ -11,7 +11,18 @@ import java.util.Map;
 @Header("Names and lore support MiniMessage formatting (e.g., <red>Test</red>, <gradient:blue:aqua>Gradient</gradient>)")
 public class VisitorSettingsConfig extends OkaeriConfig {
 
-        public String title = "Visitor Settings";
+        public String title = "Profile Flags";
+
+        @Comment("Inventory row count and nine-slot-wide layout. Use x for permission flag entries.")
+        public int rows = 6;
+
+        public List<String> layout = List.of(
+                        "F R T V F F F F F",
+                        "F x x x x x x x F",
+                        "F x x x x x x x F",
+                        "F x x x x x x x F",
+                        "F x x x x x x x F",
+                        "P F F F B F F F N");
 
         @Comment("Decorative border")
         public ItemConfig frame = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
@@ -138,9 +149,7 @@ public class VisitorSettingsConfig extends OkaeriConfig {
                         Map.entry("MANAGE_SETTINGS", new ItemConfig("COMPARATOR", "<yellow>Manage Settings",
                                         List.of("<gray>Allow changing claim settings (PvP, Color, Toggles)."))),
                         Map.entry("MANAGE_MEMBERS", new ItemConfig("PLAYER_HEAD", "<yellow>Manage Members",
-                                        List.of("<gray>Allow adding/removing members and trusted players."))),
-                        Map.entry("MANAGE_ROLES", new ItemConfig("WRITABLE_BOOK", "<yellow>Manage Roles",
-                                        List.of("<gray>Allow creating, editing, and deleting roles.")))
+                                        List.of("<gray>Allow adding/removing members and trusted players.")))
         );
 
         @Comment("Return to previous menu")
@@ -148,6 +157,18 @@ public class VisitorSettingsConfig extends OkaeriConfig {
                         "SPECTRAL_ARROW",
                         "<yellow>Back",
                         List.of("<gray>Return to Main Menu"));
+
+        @Comment("Switch to Resident flags")
+        public ItemConfig residentCategory = new ItemConfig(
+                        "PLAYER_HEAD", "<green>Resident Flags", List.of("<gray>Show Resident permissions"));
+
+        @Comment("Switch to Trusted flags")
+        public ItemConfig trustedCategory = new ItemConfig(
+                        "NAME_TAG", "<gold>Trusted Flags", List.of("<gray>Show Trusted permissions"));
+
+        @Comment("Switch to Visitor flags")
+        public ItemConfig visitorCategory = new ItemConfig(
+                        "OAK_DOOR", "<yellow>Visitor Flags", List.of("<gray>Show Visitor permissions"));
 
         @Comment("Previous Page Button")
         public ItemConfig previousPage = new ItemConfig(
@@ -165,6 +186,8 @@ public class VisitorSettingsConfig extends OkaeriConfig {
                 public String material;
                 public String name;
                 public List<String> lore;
+                @eu.okaeri.configs.annotation.CustomKey("item_model")
+                public String itemModel;
 
                 public ItemConfig() {
                 } // For Okaeri to instantiate

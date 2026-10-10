@@ -14,7 +14,7 @@ Internal placeholders are **not global**. They only work in specific messages wh
 | :--- | :--- | :--- |
 | `<owner>` | Name of the claim owner | Most claim-related messages |
 | `<player>` | Name of the target player | Invites, admin commands |
-| `<name>` | Name of the claim or warp | Warp/Rename messages |
+| `<name>` | Name of the claim | Rename messages |
 | `<count>` | Number of chunks/items | Bulk actions |
 | `<limit>` | Max limit | Limit reached messages |
 
@@ -43,8 +43,8 @@ These return data based on where the player is currently standing.
 | `%landclaim_owner%` | Name of the claim owner |
 | `%landclaim_owner_uuid%` | UUID of the claim owner |
 | `%landclaim_name%` | The custom name of the claim |
-| `%landclaim_role%` | Your role (**Owner**, **Member**, **Visitor**) |
-| `%landclaim_members%` | Number of members in the claim |
+| `%landclaim_role%` | Your effective category (**Owner**, **Resident**, **Trusted**, **Visitor**, or **Banned**) |
+| `%landclaim_members%` | Number of Residents in the claim |
 | `%landclaim_size%` | Total chunks in the current claim |
 | `%landclaim_pvp%` | PvP status (**Enabled**/**Disabled**) |
 | `%landclaim_is_claimed%` | Check if chunk is claimed (**Yes**/**No**) |
@@ -76,7 +76,7 @@ All internal placeholders support both bracket styles interchangeably in configu
 
 ## 3. Claim Limits, Slots and Economy (Global)
 
-These placeholders return data about claim limits, custom roles, members, warps, and the cost of buying additional slots.
+These placeholders return data about claim limits, Resident counts, and the cost of supported purchases.
 
 **Identifier:** `claimplugin`
 
@@ -85,12 +85,6 @@ These placeholders return data about claim limits, custom roles, members, warps,
 | `%claimplugin_claims_current%` | Number of chunks claimed by the player |
 | `%claimplugin_claims_max%` | Maximum chunk limit for the player |
 | `%claimplugin_cost_next_claim%` | Cost of the next chunk |
-| `%claimplugin_roles_current%` | Number of custom roles in active profile |
-| `%claimplugin_roles_max%` | Maximum custom roles limit for active profile |
-| `%claimplugin_cost_next_role_slot%` | Cost to buy an additional custom role slot |
 | `%claimplugin_members_current%` | Number of members in active profile |
 | `%claimplugin_members_max%` | Maximum members limit for active profile |
 | `%claimplugin_cost_next_member_slot%` | Cost to buy an additional member slot |
-| `%claimplugin_warps_current%` | Number of warps in active profile |
-| `%claimplugin_warps_max%` | Maximum warps limit for active profile |
-| `%claimplugin_cost_next_warp_slot%` | Cost to buy an additional warp slot |

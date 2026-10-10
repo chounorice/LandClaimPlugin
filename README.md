@@ -5,7 +5,7 @@
 # 💠 LandClaimPlugin
 **Advanced Territory Protection for Minecraft**
 
-A powerful, feature-rich chunk-based land protection plugin for Paper servers. Create claim profiles, protect your builds, manage members with granular roles, form alliances, set warps, and customize every aspect of your territory.
+A powerful, feature-rich chunk-based land protection plugin for Paper servers. Create claim profiles, protect your builds, manage Resident and Trusted players with configurable flags, and customize your territory.
 
 [![Paper](https://img.shields.io/badge/Paper-1.21+-blue?style=flat-square)](https://papermc.io/)
 [![Java](https://img.shields.io/badge/Java-25+-ED8B00?style=flat-square&logo=openjdk&logoColor=white)](https://www.oracle.com/java/)
@@ -39,24 +39,20 @@ A powerful, feature-rich chunk-based land protection plugin for Paper servers. C
 - **Chunk-Based Claims** — 16×16 block protection zones, simple and intuitive.
 - **Auto-Claim** — Automatically claim chunks as you walk.
 - **Connected Claims** — Optionally require claims to be adjacent (with diagonal support).
-- **Held Territory Map (Minimap)** — Live 128×128 pixel radar map in hand/off-hand or Item Frames showing chunk boundaries, claim colors, and real-time player orientation.
-- **Interactive Selectors** — Programmatically select online players via their heads for Trust, Member, and Ally management.
+- **Interactive Selectors** — Select players for Resident and Trusted management.
 - **Unstuck Command** — A safe `/claim unstuck` feature that teleports trapped players to the nearest safe wilderness block.
 
 ### Permission System
-- **4-Tier Priority Chain** — `Owner > Role > Trusted > Visitor` — the first matching tier decides
-- **Custom Roles** — Create and configure custom roles (e.g., Member, CoOwner) with granular flag-based permissions
-- **Trusted Players** — Grant individual players specific permission overrides
-- **Visitor Settings** — Configure what non-members can do in your claims
+- **Profile Role Categories** — `Owner > Resident > Trusted > Visitor` — the effective category's flags decide
+- **Configurable Flags** — Manage Resident, Trusted, and Visitor permissions in the claim menus
+- **Trusted Players** — Grant Trusted access directly with `/claim trust add`
 - **25+ Permission Flags** — Doors, trapdoors, containers, workstations, animals, vehicles, redstone, and more
 
 ### Social Systems
-- **Member System** — Invite players to join your claim, assign them roles, and manage access
-- **Ally System** — Form mutual alliances between claims with configurable inter-claim permissions
-- **Trust System** — Grant individual players per-player permission overrides
+- **Resident System** — Invite players to join your claim as Residents and manage membership
+- **Trust System** — Assign the shared Trusted category directly; configure its flag set per profile
 - **Ban System** — Hard-deny a player from entering or interacting with your claim. Banned players are physically pushed back at chunk boundaries and (if online at the moment of the ban) teleported outside. Survives server restarts.
-- **Warp System** — Set named warps within your claims with custom icons and per-player limits
-- **Public Warps** — Publish any of your warps to the server-wide public list. Other players can browse and teleport via `/claim publicwarps`.
+- **Profile Spawnpoint** — Set one `/claim spawnpoint` per profile; permitted profile members can use `/claim tp <owner> <claim>`.
 
 ### Protection
 - **Block Protection** — Prevent unauthorized breaking and placing
@@ -130,7 +126,7 @@ LandClaimPlugin so the addon only loads when the parent is present.
 
 | Addon | Description | Repository |
 |---|---|---|
-| **LandClaimPlugin-Economy** | Charge for claiming, warps, and member invites; per-chunk daily tax with auto-unclaim; server-wide claim marketplace + time-limited auctions with a GUI browser. Vault-based. | [synkfr/LandClaimPlugin-Eco-Addon](https://github.com/synkfr/LandClaimPlugin-Eco-Addon) |
+| **LandClaimPlugin-Economy** | Charge for claiming and Resident invitations; per-chunk daily tax with auto-unclaim; server-wide claim marketplace + time-limited auctions with a GUI browser. Vault-based. | [synkfr/LandClaimPlugin-Eco-Addon](https://github.com/synkfr/LandClaimPlugin-Eco-Addon) |
 
 ### Building Your Own
 
@@ -169,7 +165,6 @@ For addons that want to act on claim lifecycle, listen for
 | `/claim profiles` | Open the active profile selector (if Multi-Profile is enabled) |
 | `/claim create <name>` | Create a new claim profile with the given name |
 | `/claim auto` | Toggle auto-claim mode (claim chunks as you walk) |
-| `/claim map` | Receive the live held Territory Map item (alias: `/claim minimap`) |
 | `/claim menu` | Open the main claim management GUI |
 | `/claim info` | View info about the claim at your location |
 | `/claim visible` | Toggle claim boundary visualization |
@@ -181,6 +176,8 @@ For addons that want to act on claim lifecycle, listen for
 | `/claim unstuck` | Safely teleport to the nearest wilderness block if trapped |
 | `/claim abandon` | Delete your entire active claim profile and all its chunks |
 | `/claim pvp <on/off> [time]` | Toggle PvP globally in the claim, with an optional time duration in seconds |
+| `/claim spawnpoint [remove]` | Set or remove this profile's spawnpoint |
+| `/claim tp <owner> <claim>` | Teleport to a profile spawnpoint if you are its owner, Resident, or Trusted |
 | `/unclaim` | Unclaim the chunk you're standing in |
 | `/unclaim auto` | Toggle auto-unclaim mode (unclaim your owned chunks as you walk) |
 | `/unclaim radius <1-5>` | Unclaim all your owned chunks in a square radius (e.g. `1` = 3×3, `2` = 5×5) |
@@ -194,13 +191,8 @@ Jump directly to specific GUI panels without navigating through the main menu.
 | Command | Description |
 |---|---|
 | `/claim menu settings` | Open claim settings (color, PvP, visibility, etc.) |
-| `/claim menu members` | Open member management |
-| `/claim menu roles` | Open role management |
-| `/claim menu trusted` | Open trusted player management |
-| `/claim menu visitors` | Open visitor settings |
-| `/claim menu allies` | Open ally management |
-| `/claim menu map` | Receive the held Territory Map |
-| `/claim menu warps` | Open warp management |
+| `/claim menu manage` | Open Resident, Trusted, and Visitor management |
+| `/claim menu flags` | Open profile flags (Visitor category by default) |
 
 ### Management Commands
 <details>
@@ -220,34 +212,18 @@ Jump directly to specific GUI panels without navigating through the main menu.
 
 | Command | Description |
 |---|---|
-| `/claim trust invite <player>` | Send a trust invitation to a player |
-| `/claim trust accept` | Accept a pending trust invitation |
-| `/claim trust deny` | Deny a pending trust invitation |
+| `/claim trust add <player>` | Grant Trusted access directly |
 | `/claim trust remove <player>` | Remove a trusted player |
 | `/claim trust list` | List all trusted players and their flags |
 </details>
 
 <details>
-<summary><b>Allies</b></summary>
+<summary><b>Spawnpoints & Admin</b></summary>
 
 | Command | Description |
 |---|---|
-| `/claim ally invite <name>` | Send an alliance request to another claim |
-| `/claim ally accept <name>` | Accept an alliance request |
-| `/claim ally deny <name>` | Deny an alliance request |
-| `/claim ally remove <name>` | Remove an existing alliance |
-</details>
-
-<details>
-<summary><b>Warps & Admin</b></summary>
-
-| Command | Description |
-|---|---|
-| `/claim setwarp <name> [public|private]` | Set a warp at your current location with optional visibility |
-| `/claim delwarp <name>` | Delete a warp |
-| `/claim warp <name> [warpName]` | Teleport to your warp, or a public warp (`/claim warp <name>` or `/claim warp <owner>:<name>`) |
-| `/claim publicwarps` | Open the server-wide public warps browser GUI |
-| `/claim warps` | Open the active claim's warp management GUI |
+| `/claim spawnpoint [remove]` | Set or remove the active profile's spawnpoint |
+| `/claim tp <owner> <claim>` | Teleport to a profile spawnpoint when authorized |
 | `/claim admin check` | View detailed claim info (owner UUID, profile name) |
 | `/claim admin unclaim` | Force-unclaim the chunk you're standing in |
 | `/claim admin edit <player>` | Open any player's claim management GUI (supports `@p`, `@s`, `@r`) |
@@ -272,15 +248,13 @@ Jump directly to specific GUI panels without navigating through the main menu.
 |---|---|---|
 | `landclaim.*` | All LandClaim permissions | `false` |
 | `landclaim.claim` | Basic claiming ability | ✅ `true` |
-| `landclaim.minimap` | Access to the held Territory Map | ✅ `true` |
 | `landclaim.auto` | Use auto-claim mode | ✅ `true` |
 | `landclaim.admin` | Admin commands & bypass all protection | `op` |
 | `landclaim.decay.exempt` | Exempts player from automatic claim decay | `op` |
 | `landclaim.update.notify` | Receive update notifications on join | `op` |
 | `landclaim.limit.<n>` | Override the chunk claim limit (e.g., `landclaim.limit.50`) | `false` |
 | `landclaim.list` | List claims | ✅ `true` |
-| `landclaim.warps.limit.<n>` | Override the warps limit (e.g., `landclaim.warps.limit.10`) | `false` |
-| `landclaim.createrole.<n>` | Override the max number of custom roles | `false` |
+| `landclaim.trust.limit.<n>` | Set a Trusted-player cap for a profile (default cap: 5) | `false` |
 
 ---
 

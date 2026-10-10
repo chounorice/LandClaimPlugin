@@ -4,21 +4,16 @@ import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.managers.ClaimManager;
 import org.ayosynk.landClaimPlugin.managers.CombatManager;
 import org.ayosynk.landClaimPlugin.managers.ConfigManager;
-import org.ayosynk.landClaimPlugin.managers.WarpManager;
 import org.ayosynk.landClaimPlugin.models.ClaimProfile;
 import org.ayosynk.landClaimPlugin.models.ChunkPosition;
-import org.ayosynk.landClaimPlugin.models.Warp;
 import org.ayosynk.landClaimPlugin.models.ClaimPlayer;
 import org.bukkit.Location;
-import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
 import org.ayosynk.landClaimPlugin.managers.PermissionResolver;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 
@@ -39,10 +34,6 @@ public class LandClaimAPIImpl implements LandClaimAPI {
 
     private ConfigManager getConfigManager() {
         return plugin.getConfigManager();
-    }
-
-    private WarpManager getWarpManager() {
-        return plugin.getWarpManager();
     }
 
     private CombatManager getCombatManager() {
@@ -136,18 +127,6 @@ public class LandClaimAPIImpl implements LandClaimAPI {
     @Override
     public boolean isTrusted(ClaimProfile profile, UUID playerId) {
         return profile.isTrusted(playerId);
-    }
-
-    // ========== Warp Operations ==========
-
-    @Override
-    public Map<String, Warp> getWarps(UUID profileId) {
-        return getWarpManager().getWarps(profileId);
-    }
-
-    @Override
-    public Warp getWarp(UUID profileId, String warpName) {
-        return getWarpManager().getWarp(profileId, warpName);
     }
 
     // ========== Combat ==========

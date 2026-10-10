@@ -22,19 +22,4 @@ public interface WarpDao {
      */
     CompletableFuture<Map<UUID, Map<String, Warp>>> loadAllWarps();
 
-    /**
-     * Create or update a warp. Writes synchronously to the database.
-     *
-     * @param ownerId the profile owner's UUID
-     * @param warp    the warp to persist
-     */
-    void saveWarp(UUID ownerId, Warp warp);
-
-    /**
-     * Delete a warp by name. Writes synchronously to the database.
-     *
-     * @param ownerId the profile owner's UUID
-     * @param name    the warp name (case-insensitive)
-     */
-    void deleteWarp(UUID ownerId, String name);
 }

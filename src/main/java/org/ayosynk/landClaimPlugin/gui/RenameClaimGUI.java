@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 public class RenameClaimGUI {
@@ -22,25 +23,26 @@ public class RenameClaimGUI {
                 FoliaScheduler.runAsync(plugin, () -> {
                         RenameClaimConfig config = plugin.getConfigManager().getRenameClaimConfig();
 
-                        String[] structure = {
-                                        "O O B B B B B O O",
-                                        "O B C B R B A B O",
-                                        "B B B B B B B B B",
-                                        "O B B S < S B B B"
-                        };
+                        String[] structure = GuiLayoutValidator.validate(config.rows, config.layout,
+                                        Set.of("O", "B", "C", "R", "A", "S", "<", "."),
+                                        null, null, "Rename Claim", plugin);
+                        if (structure == null) {
+                                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                                                GuiHelper.MM.deserialize("<red>Rename menu layout is invalid; check the plugin log.")));
+                                return;
+                        }
 
                         Map<Character, SlotDefinition> ingredients = new HashMap<>();
                         ingredients.put('O', GuiHelper.buildSlot(config.outerFrame.material, config.outerFrame.name,
-                                        config.outerFrame.lore));
+                                        config.outerFrame.lore, config.outerFrame.itemModel));
                         ingredients.put('B', GuiHelper.buildSlot(config.background.material, config.background.name,
-                                        config.background.lore));
+                                        config.background.lore, config.background.itemModel));
                         ingredients.put('S', GuiHelper.buildSlot(config.navSpacer.material, config.navSpacer.name,
-                                        config.navSpacer.lore));
+                                        config.navSpacer.lore, config.navSpacer.itemModel));
 
                         // Change Name: close GUI → chat prompt
                         ingredients.put('C', GuiHelper.buildSlot(config.changeName.material, config.changeName.name,
-                                        config.changeName.lore, (p, e) -> {
-                                                p.closeInventory();
+                                        config.changeName.lore, config.changeName.itemModel, (p, e) -> {
                                                 AnvilInputGUI.open(plugin, p, "Rename Claim", profile.getName(), input -> {
                                                         FoliaScheduler.runTask(plugin, () -> {
                                                                 if (input == null) {
@@ -90,8 +92,7 @@ public class RenameClaimGUI {
                         // Reset to Default
                         ingredients.put('R',
                                         GuiHelper.buildSlot(config.resetToDefault.material, config.resetToDefault.name,
-                                                        config.resetToDefault.lore, (p, e) -> {
-                                                                p.closeInventory();
+                                                        config.resetToDefault.lore, config.resetToDefault.itemModel, (p, e) -> {
                                                                 String defaultName = Bukkit.getOfflinePlayer(
                                                                                 profile.getProfileId()).getName();
                                                                 if (defaultName == null)
@@ -121,8 +122,7 @@ public class RenameClaimGUI {
                         // Set Owner Alias
                         ingredients.put('A',
                                         GuiHelper.buildSlot(config.ownerAlias.material, config.ownerAlias.name,
-                                                        config.ownerAlias.lore, (p, e) -> {
-                                                                p.closeInventory();
+                                                        config.ownerAlias.lore, config.ownerAlias.itemModel, (p, e) -> {
                                                                 String currentAlias = profile.getOwnerAlias() != null ? profile.getOwnerAlias() : "reset";
                                                                 AnvilInputGUI.open(plugin, p, "Set Owner Alias", currentAlias, input -> {
                                                                         FoliaScheduler.runTask(plugin, () -> {
@@ -149,14 +149,13 @@ public class RenameClaimGUI {
                         // Back
                         ingredients.put('<',
                                         GuiHelper.buildSlot(config.back.material, config.back.name, config.back.lore,
-                                                        (p, e) -> {
-                                                                p.closeInventory();
+                                                        config.back.itemModel, (p, e) -> {
                                                                 ClaimSettingsGUI.open(p, profile, plugin);
                                                         }));
 
                         Component title = GuiHelper.MM.deserialize(config.title);
                         FoliaScheduler.runTask(plugin, () -> {
-                                CustomGui gui = new CustomGui(title, 4);
+                                CustomGui gui = new CustomGui(title, config.rows);
                                 gui.fillFromStructure(structure, ingredients);
                                 gui.open(player);
                         });

@@ -6,6 +6,7 @@ import org.bukkit.Material;
 public class Warp {
     private String name;
     private Location location;
+    private String worldName;
     private Material icon;
     private boolean isPublic;
 
@@ -16,6 +17,16 @@ public class Warp {
     public Warp(String name, Location location, Material icon, boolean isPublic) {
         this.name = name;
         this.location = location;
+        this.worldName = location != null && location.getWorld() != null ? location.getWorld().getName() : null;
+        this.icon = icon;
+        this.isPublic = isPublic;
+    }
+
+    public Warp(String name, String worldName, double x, double y, double z, float yaw, float pitch,
+            Material icon, boolean isPublic) {
+        this.name = name;
+        this.worldName = worldName;
+        this.location = new Location(null, x, y, z, yaw, pitch);
         this.icon = icon;
         this.isPublic = isPublic;
     }
@@ -34,6 +45,11 @@ public class Warp {
 
     public void setLocation(Location location) {
         this.location = location;
+        this.worldName = location != null && location.getWorld() != null ? location.getWorld().getName() : null;
+    }
+
+    public String getWorldName() {
+        return worldName;
     }
 
     public Material getIcon() {
@@ -44,12 +60,6 @@ public class Warp {
         this.icon = icon;
     }
 
-    /**
-     * @return {@code true} if this warp is listed in the server-wide
-     *         public warps GUI and any player with {@code landclaim.warp}
-     *         can teleport to it. {@code false} if the warp is private
-     *         (only the owner and claim members can use it).
-     */
     public boolean isPublic() {
         return isPublic;
     }

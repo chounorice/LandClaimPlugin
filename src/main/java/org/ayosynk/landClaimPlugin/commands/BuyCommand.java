@@ -80,33 +80,6 @@ public class BuyCommand implements LandClaimCommand {
                     });
                 }));
 
-        // /claim buy role
-        manager.command(buyBuilder.literal("role")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!isLimitPurchasesEnabled()) {
-                        player.sendMessage(configManager.getMessage("limit-purchases-disabled"));
-                        return;
-                    }
-                    ClaimProfile profile = claimManager.getActiveProfile(player);
-                    if (profile == null) {
-                        player.sendMessage(configManager.getMessage("no-profile"));
-                        return;
-                    }
-                    if (!profile.isOwner(player.getUniqueId())) {
-                        player.sendMessage(configManager.getMessage("not-owner"));
-                        return;
-                    }
-                    double cost = getCost("roleSlotCost", 150.0);
-                    if (!chargePlayer(player, cost, "BUY_ROLE_SLOT")) {
-                        return;
-                    }
-                    profile.setBonusRoleSlots(profile.getBonusRoleSlots() + 1);
-                    claimManager.saveAndSync(profile);
-                    player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                            .deserialize("<green>Successfully purchased an additional custom role slot! Total bonus slots: <gold>" + profile.getBonusRoleSlots() + "</gold>"));
-                }));
-
         // /claim buy member
         manager.command(buyBuilder.literal("member")
                 .handler(context -> {
@@ -134,32 +107,6 @@ public class BuyCommand implements LandClaimCommand {
                             .deserialize("<green>Successfully purchased an additional member slot! Total bonus slots: <gold>" + profile.getBonusMemberSlots() + "</gold>"));
                 }));
 
-        // /claim buy warp
-        manager.command(buyBuilder.literal("warp")
-                .handler(context -> {
-                    Player player = context.sender().source();
-                    if (!isLimitPurchasesEnabled()) {
-                        player.sendMessage(configManager.getMessage("limit-purchases-disabled"));
-                        return;
-                    }
-                    ClaimProfile profile = claimManager.getActiveProfile(player);
-                    if (profile == null) {
-                        player.sendMessage(configManager.getMessage("no-profile"));
-                        return;
-                    }
-                    if (!profile.isOwner(player.getUniqueId())) {
-                        player.sendMessage(configManager.getMessage("not-owner"));
-                        return;
-                    }
-                    double cost = getCost("warpSlotCost", 75.0);
-                    if (!chargePlayer(player, cost, "BUY_WARP_SLOT")) {
-                        return;
-                    }
-                    profile.setBonusWarpSlots(profile.getBonusWarpSlots() + 1);
-                    claimManager.saveAndSync(profile);
-                    player.sendMessage(net.kyori.adventure.text.minimessage.MiniMessage.miniMessage()
-                            .deserialize("<green>Successfully purchased an additional warp slot! Total bonus slots: <gold>" + profile.getBonusWarpSlots() + "</gold>"));
-                }));
     }
 
     private boolean isLimitPurchasesEnabled() {

@@ -2,8 +2,6 @@ package org.ayosynk.landClaimPlugin.db;
 
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.models.Warp;
-import org.bukkit.Bukkit;
-import org.bukkit.Location;
 import org.bukkit.Material;
 
 import java.sql.Connection;
@@ -102,8 +100,7 @@ public class SQLWarpDao implements WarpDao {
                     }
                     boolean isPublic = rs.getBoolean("is_public");
 
-                    Location loc = new Location(Bukkit.getWorld(worldName), x, y, z, yaw, pitch);
-                    Warp warp = new Warp(name, loc, icon, isPublic);
+                    Warp warp = new Warp(name, worldName, x, y, z, yaw, pitch, icon, isPublic);
 
                     allWarps.computeIfAbsent(ownerId, k -> new HashMap<>()).put(name.toLowerCase(), warp);
                 }
@@ -114,58 +111,4 @@ public class SQLWarpDao implements WarpDao {
         });
     }
 
-    @Override
-    public void saveWarp(UUID ownerId, Warp warp) {
-        CompletableFuture.runAsync(() -> {
-            String tablePrefix = plugin.getConfigManager().getPluginConfig().database.tablePrefix;
-            String sql = "REPLACE INTO " + tablePrefix + "warps (owner_id, name, world, x, y, z, yaw, pitch, icon, is_public) " +
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
-
-            if (dbManager.isMySQL()) {
-                sql = "INSERT INTO " + tablePrefix + "warps (owner_id, name, world, x, y, z, yaw, pitch, icon, is_public) " +
-                        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) " +
-                        "ON DUPLICATE KEY UPDATE world=VALUES(world), x=VALUES(x), y=VALUES(y), z=VALUES(z), yaw=VALUES(yaw), pitch=VALUES(pitch), icon=VALUES(icon), is_public=VALUES(is_public)";
-            }
-
-            try (Connection conn = dbManager.getConnection();
-                    PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-                stmt.setString(1, ownerId.toString());
-                stmt.setString(2, warp.getName());
-                Location location = warp.getLocation();
-                stmt.setString(3, location.getWorld().getName());
-                stmt.setDouble(4, location.getX());
-                stmt.setDouble(5, location.getY());
-                stmt.setDouble(6, location.getZ());
-                stmt.setFloat(7, location.getYaw());
-                stmt.setFloat(8, location.getPitch());
-                stmt.setString(9, warp.getIcon().name());
-                stmt.setBoolean(10, warp.isPublic());
-                stmt.executeUpdate();
-
-            } catch (SQLException e) {
-                plugin.getLogger().severe("Failed to save warp to database: " + e.getMessage());
-            }
-        });
-    }
-
-    @Override
-    public void deleteWarp(UUID ownerId, String name) {
-        CompletableFuture.runAsync(() -> {
-            String tablePrefix = plugin.getConfigManager().getPluginConfig().database.tablePrefix;
-            String sql = "DELETE FROM " + tablePrefix + "warps WHERE owner_id = ? AND (name = ? OR LOWER(name) = LOWER(?))";
-
-            try (Connection conn = dbManager.getConnection();
-                    PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-                stmt.setString(1, ownerId.toString());
-                stmt.setString(2, name);
-                stmt.setString(3, name);
-                stmt.executeUpdate();
-
-            } catch (SQLException e) {
-                plugin.getLogger().severe("Failed to delete warp from database: " + e.getMessage());
-            }
-        });
-    }
 }

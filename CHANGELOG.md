@@ -2,6 +2,36 @@
 
 All notable changes to LandClaimPlugin will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+- Began replacing profile membership roles with the Resident, Trusted, and Visitor categories; `%landclaim_role%` now reports those categories, plus Owner/Banned.
+- Added per-profile Resident/Trusted flag storage, a Manage menu with role lists, and category selection in Flags.
+- Changed `/claim trust add` to grant Trusted access directly and added a configurable default cap of five, extendable with `landclaim.trust.limit.<n>`.
+- Added one profile spawnpoint via `/claim spawnpoint [remove]` and `/claim tp <owner> <claim>` for profile members.
+- Removed the in-game territory minimap, Ally command registration, and the old warp/minimap/allies controls from the main menu.
+- Added persistent category initialization markers so intentionally empty flag groups stay empty after saving and reloading.
+- Added optional `item_model` settings to main-menu, Manage, and Flags items, plus configurable row counts and slot layouts for the main and Manage menus.
+- Added a Visitor role list to Manage, showing online players who are visitors to the active profile.
+- Added configurable row counts, layouts, and `item_model` support for the Flags, Residents, and Trusted menus.
+- Added configurable row counts, layouts, and `item_model` support for Player Control, plus a configurable Visitor list menu.
+- Added configurable rows, item placement, and `item_model` support for Claim Settings; removed its obsolete custom-role button.
+- Added configurable rows, layout, and `item_model` support for the Profile Selector and removed an unnecessary close between profile selection and opening the claim menu.
+- Added configurable rows, layout, and `item_model` support for the Online Player Selector.
+- Added configurable rows, layouts, and `item_model` support for Claim Color, Rename Claim, and Title Settings; removed explicit closes when switching between menus.
+- Removed the custom-role and warp-slot PlaceholderAPI values along with their player-facing commands and menus.
+- Changed YAML loading to avoid Okaeri's update-and-save path during normal loading, preventing automatic YAML rewrites.
+- Removed explicit inventory closes between the member list, player controls, and Manage menus to avoid flicker during navigation.
+- Removed unused pagination calculations and clarified the current permission categories and retained legacy API/data behavior in the documentation.
+- Removed dynamic role definitions from the active profile model and retained legacy role tables without re-saving them from profile state.
+- Deferred legacy warp world resolution and spawnpoint migration to the server scheduler; the database worker now reads coordinates only.
+
+### Migration notes
+- Existing member-role assignments are backed up to `profile_legacy_member_roles` and normalized to Resident. Legacy role-specific permissions are not migrated; the Resident category flags apply instead.
+- Existing trusted-player-specific flags no longer override the shared Trusted category flags; those legacy values remain stored.
+- A single eligible legacy warp is migrated to the profile spawnpoint; multiple or ineligible warps are not selected automatically.
+- Legacy database records and configuration keys for removed features are retained for compatibility; warp database loading remains temporarily available for spawnpoint migration.
+
 ## [3.4.0] - 2026-10-06
 
 ### Added

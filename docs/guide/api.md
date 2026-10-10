@@ -37,17 +37,14 @@ if (profile != null) {
 | Method | Description |
 |--------|-------------|
 | `hasPermission(profile, playerId, flag)` | Check if player has specific permission |
-| `getPlayerStatus(profile, playerId)` | Get player status: "owner", "member", "trusted", "visitor" |
+| `getPlayerStatus(profile, playerId)` | Get player status: "owner", "resident", "trusted", "visitor", or "banned" |
 | `isOwner(profile, playerId)` | Check if player owns the claim |
 | `isMember(profile, playerId)` | Check if player is a member |
 | `isTrusted(profile, playerId)` | Check if player is trusted |
 
-### Warp Operations
+### Profile Spawnpoint
 
-| Method | Description |
-|--------|-------------|
-| `getWarps(profileId)` | Get all warps in a claim |
-| `getWarp(profileId, name)` | Get specific warp by name |
+The public API no longer exposes warp CRUD operations. Existing warp database records are read only during startup migration; profile destinations are managed with `/claim spawnpoint` and `/claim tp <owner> <claim>`.
 
 ### Combat & Limits
 
@@ -143,19 +140,6 @@ public void onClaimTransfer(ClaimTransferEvent event) {
 }
 ```
 
-### WarpCreateEvent & WarpPrivacyChangeEvent
-
-Fired when warps are created or privacy is modified (e.g. made public).
-
-```java
-@EventHandler
-public void onWarpPrivacyChange(WarpPrivacyChangeEvent event) {
-    if (event.isNewIsPublic()) {
-        System.out.println("Warp " + event.getWarp().getName() + " made public by " + event.getPlayer().getName());
-    }
-}
-```
-
 ### Registering Listeners
 
 ```java
@@ -184,9 +168,7 @@ These are the flags you can check using `api.hasPermission()`:
 | `INTERACT_ENTITIES` | Interact with mobs |
 | `HARM_ENTITIES` | Damage mobs |
 | `MANAGE_MEMBERS` | Add/remove members |
-| `MANAGE_ROLES` | Create/edit roles |
 | `MANAGE_SETTINGS` | Change claim settings |
-| `WARP_MANAGE` | Create/delete warps |
 | `CLAIM_LAND` | Claim land on behalf of owner |
 | `ADMIN_MENU` | Access admin menu |
 

@@ -12,40 +12,36 @@ public class MainMenuConfig extends OkaeriConfig {
 
         public String title = "Claim: {claim_name}";
 
+        @Comment("Inventory row count (1-6) and nine-slot-wide layout, top row first.")
+        public int rows = 3;
+
+        @Comment("Layout characters map to the item keys below; '.' leaves a slot empty.")
+        public List<String> layout = List.of(
+                        "1 1 2 2 2 2 2 1 1",
+                        "1 . . S T V . . 1",
+                        "2 2 2 2 2 2 2 2 2");
+
         @Comment("Filler 1")
         public ItemConfig filler1 = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
 
         @Comment("Filler 2")
         public ItemConfig filler2 = new ItemConfig("GRAY_STAINED_GLASS_PANE", " ", List.of());
 
-        @Comment("Claim Map Button")
-        public ItemConfig claimMap = new ItemConfig("MAP", "Claim Map", List.of());
-
-        @Comment("Claim Warps Button")
-        public ItemConfig warps = new ItemConfig("RED_BED", "Warps", List.of());
-
-        @Comment("Allies Button")
-        public ItemConfig allies = new ItemConfig("ENDER_CHEST", "Allies", List.of());
-
         @Comment("Claim Settings Button")
         public ItemConfig settings = new ItemConfig("EMERALD", "Settings", List.of());
 
-        @Comment("Trusted Members Management Button")
-        public ItemConfig trusted = new ItemConfig("COPPER_CHESTPLATE", "Trusted Members Management", List.of());
+        @Comment("Manage Residents, Trusted players, and Visitors")
+        public ItemConfig trusted = new ItemConfig("COPPER_CHESTPLATE", "<gold>Manage", List.of());
 
-        @Comment("Members Management Button")
-        public ItemConfig members = new ItemConfig("PLAYER_HEAD", "Members Management", List.of());
-
-        @Comment("Visitor Settings Button")
-        public ItemConfig visitors = new ItemConfig("SKULL_BANNER_PATTERN", "Visitor Settings", List.of());
-
-        @Comment("Close Menu Button")
-        public ItemConfig close = new ItemConfig("STRUCTURE_VOID", "close", List.of());
+        @Comment("Open profile flags (Visitor category first)")
+        public ItemConfig visitors = new ItemConfig("SKULL_BANNER_PATTERN", "<yellow>Flags", List.of());
 
         public static class ItemConfig extends OkaeriConfig {
                 public String material;
                 public String name;
                 public List<String> lore;
+                @eu.okaeri.configs.annotation.CustomKey("item_model")
+                public String itemModel;
 
                 public ItemConfig() {
                 } // For Okaeri to instantiate

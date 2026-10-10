@@ -27,9 +27,11 @@ For all messages and placeholders, the plugin supports both **angle brackets** `
 | `chunkClaimLimit` | Integer | `5` | Default base chunks limit per player |
 | `maxBonusClaimBlocks` | Integer | `0` | Hard cap on bonus chunks a player can buy/acquire (0 = unlimited) |
 | `maxTotalClaimLimit` | Integer | `0` | Hard cap on total claim limit including base limit and bonus chunks (0 = unlimited) |
-| `maxWarps` | Integer | `3` | Default max warps per player |
+| `maxClaimMembers` | Integer | `5` | Default Residents per profile (bonus member slots increase this cap) |
+| `maxMemberships` | Integer | `1` | Maximum number of profiles a player can join as a Resident; each Resident membership consumes one slot |
+| `maxTrustedPlayers` | Integer | `5` | Default Trusted-player cap per profile |
 
-Permission overrides: `landclaim.limit.<n>`, `landclaim.warps.limit.<n>`
+Permission overrides: `landclaim.limit.<n>` for chunks and `landclaim.trust.limit.<n>` for Trusted players. A Trusted limit permission raises the configured profile cap to at least its numeric value; it cannot lower `maxTrustedPlayers`. A Resident membership does not consume the owner's claim chunks; it consumes one membership slot for the Resident. Warp-related settings are legacy and no longer exposed by player commands.
 
 ### Multi-Profile System
 
@@ -107,7 +109,9 @@ Supported maps: `dynmap`, `bluemap`, `squaremap`, `pl3xmap`
 | `actionbarUpdateInterval` | Integer | `20` | Ticks between actionbar updates (20 ticks = 1 second) |
 | `claimChatNotifications` | Boolean | `false` | Enable or disable chat messages when entering or leaving a claim (can be toggled per-player with `/claim notify`) |
 
-### Held Territory Map (Minimap)
+### Removed Territory Minimap (Legacy Settings)
+
+The in-game Territory Map has been removed. These legacy settings may remain in existing `config.yml` files but are no longer used.
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
@@ -197,8 +201,8 @@ Wilderness protection does not affect explosion damage (`ExplosionProtectionList
 
 | Key | Type | Default | Description |
 |-----|------|---------|-------------|
-| `visitorSettings.locked` | Boolean | `false` | Lock visitor settings server-wide. When `true`, claim owners/members cannot open or edit visitor settings via GUI or `/claim menu visitors`, and `defaultFlags` are strictly enforced across ALL claims for visitors. |
-| `visitorSettings.defaultFlags` | List | `["DAMAGE_MONSTERS"]` | Default visitor flags. When `locked: true`, all claims enforce these flags for visitors (flags in the list are allowed, omitted flags are denied). When `locked: false`, these flags are assigned as starting flags for new claims. |
+| `visitorSettings.locked` | Boolean | `false` | Lock Visitor flags server-wide. When `true`, profile flags cannot be edited in the GUI and `defaultFlags` are enforced for Visitors. |
+| `visitorSettings.defaultFlags` | List | `["DAMAGE_MONSTERS"]` | Default Visitor flags. When `locked: true`, these flags are enforced; when `false`, they seed new profiles. |
 
 ::: tip Open Visitor World Example
 To allow visitors to do everything in claims except breaking and placing blocks, set:
@@ -244,7 +248,7 @@ visitorSettings:
 
 ## Permission Flags
 
-Complete list of permission flags used across roles, trusted players, and visitor settings.
+Permission flags are configured separately for Resident, Trusted, and Visitor on each profile.
 
 ### Block Interaction Flags
 
@@ -300,7 +304,6 @@ These flags grant control over the claim management systems.
 | `ADMIN_MENU` | Allow members to open the `/claim menu` while standing in the claim |
 | `MANAGE_SETTINGS` | Access to claim settings (PvP, Color, Toggles) |
 | `MANAGE_MEMBERS` | Access to member management (Add/Remove/Trust) |
-| `MANAGE_ROLES` | Access to role management (Create/Edit/Delete) |
 
 ::: warning Owner-Only Restrictions
 Even with `ADMIN_MENU` and management flags, the following actions are **strictly owner-only** for regular player claims:
@@ -319,31 +322,45 @@ Administrators with the `landclaim.admin` permission have special bypasses for m
 
 ---
 
-## Default Roles
+## Default Role Categories
 
-Every new `ClaimProfile` gets two built-in roles:
+Profiles use three systematic categories instead of the old Member/CoOwner role hierarchy:
 
-### Member
-Priority: 100 (lower priority than CoOwner)
-Flags: `USE_DOORS`, `USE_TRAPDOORS`, `USE_FENCE_GATES`, `USE_CONTAINERS`, `USE_WORKSTATIONS`, `USE_BEDS`, `USE_REDSTONE`
+- **Resident** — Member assignments migrated from the legacy system; starts with basic interaction and entity flags.
+- **Trusted** — Assigned directly with `/claim trust add`; starts with basic interaction flags.
+- **Visitor** — Implicit for everyone else; starts with `visitorSettings.defaultFlags`.
 
-### CoOwner
-Priority: 10 (higher priority than Member)
-Flags: All 25 flags listed above
+An owner's permissions bypass category flags. Otherwise, the first matching category decides the permission: Resident, then Trusted, then Visitor. Bans deny access before the category check.
 
 ---
 
 ## Menu Configuration
 
-All GUI menus are fully configurable via YAML files in the `plugins/LandClaimPlugin/menus/` directory. Each menu config lets you customize:
+GUI menus are configured via YAML files in the `plugins/LandClaimPlugin/menus/` directory. Most menus customize:
 
 - **Materials** — Item types for buttons, fillers, and navigation
 - **Display Names** — MiniMessage-formatted text for all items
 - **Lore** — Item descriptions and instructions
-- **Layout** — Slot positions and structure patterns
+- **Layout** — Main, Manage, Flags, Residents, Trusted, Claim Settings, Player Control, Profile Selector, Online Player Selector, Claim Color, Rename Claim, and Title Settings menus support configurable `rows` and a nine-slot-wide `layout` list. `x` marks list/content slots, `P` and `N` mark previous/next page buttons, and `.` leaves a slot empty; other characters map to the menu's configured items.
+- **Item models** — Items in those menus support optional `item_model` namespaced keys (for example, `minecraft:custom_item`).
 
 Available menu configs:
 - `mainmenu.yml` — Main claim management GUI
+- `Manage.yml` — Resident, Trusted, and Visitor role entry points
+- `VisitorSettings.yml` — Role-category flags
+- `MemberManagement.yml` — Resident list and invitation controls
+- `TrustManagement.yml` — Trusted list and add/remove controls
+- `PlayerControlPanel.yml` — Resident controls
 - `profile-selector.yml` — Profile selector GUI
 - `ClaimSettings.yml` — Claim settings toggles
-- And many more for members, allies, warps, roles, etc.
+- `VisitorManagement.yml` — Online Visitor list
+- Other menu layouts still use their built-in structures.
+
+Example `mainmenu.yml` layout:
+```yaml
+rows: 3
+layout:
+  - "1 1 2 2 2 2 2 1 1"
+  - "1 . . S T V . . 1"
+  - "2 2 2 2 2 2 2 2 2"
+```

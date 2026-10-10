@@ -20,6 +20,12 @@ MySQL connections use **HikariCP** with configurable pool settings:
 
 All tables use a configurable prefix (default: `lc_`).
 
+### Role and spawnpoint migration
+
+The role-category migration archives each pre-existing profile member assignment in `lc_profile_legacy_member_roles`, then rewrites the active `lc_profile_member_roles.role_name` as `Resident`. Previous custom-role names and per-role flags are not applied to the new categories; the new Resident category flags govern migrated members. The legacy `profile_roles` table is retained but ignored. Resident and Trusted permissions are stored in `lc_profile_category_flags`; `lc_profile_category_flag_sets` records initialized categories so an intentionally empty set remains empty after reload. One spawnpoint per profile is stored in `lc_profile_spawnpoints`.
+
+Legacy per-player Trusted flags remain in `lc_profile_trusted_players` for compatibility but no longer grant permissions. Old warp/alliance rows are retained and are not rewritten during ordinary profile saves; they are only deleted when the associated profile itself is deleted. A single eligible legacy warp may be copied to the profile spawnpoint; multiple or out-of-claim warp locations are not selected automatically. Alliance rows no longer grant access.
+
 ### `lc_claim_profiles`
 
 Primary table for claim profile metadata.
@@ -45,7 +51,7 @@ Stores all claimed chunk positions.
 
 ### `lc_profile_roles`
 
-Custom roles defined per profile.
+Legacy custom-role definitions retained as stored data; current permissions use the role-category flag tables instead.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -57,7 +63,7 @@ Custom roles defined per profile.
 
 ### `lc_profile_trusted_players`
 
-Per-player permission overrides.
+Legacy per-player Trusted flag rows, retained but ignored by current permission resolution.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -68,7 +74,7 @@ Per-player permission overrides.
 
 ### `lc_profile_visitor_flags`
 
-Base permission layer for all non-members.
+Visitor-category flags.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -78,7 +84,7 @@ Base permission layer for all non-members.
 
 ### `lc_profile_member_roles`
 
-Player-to-role assignments within a profile.
+Resident assignments within a profile (legacy role names are normalized during migration).
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -89,7 +95,7 @@ Player-to-role assignments within a profile.
 
 ### `lc_profile_ally_flags`
 
-Allied claim relationships with per-ally permissions.
+Legacy alliance rows retained for data compatibility; they do not grant permissions.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -113,7 +119,7 @@ Player preference data.
 
 ### `lc_warps`
 
-Warp teleport points.
+Legacy warp points, read-only for migration to the profile spawnpoint.
 
 | Column | Type | Constraints | Description |
 |--------|------|-------------|-------------|
@@ -151,11 +157,8 @@ ClaimDao (interface, legacy)
 PlayerDao (interface)
     └── SQLPlayerDao (implementation)
 
-RoleDao (interface)
-    └── SQLRoleDao (implementation)
-
 WarpDao (interface)
-    └── SQLWarpDao (implementation)
+    └── SQLWarpDao (read-only legacy migration)
 ```
 
 All DAO operations return `CompletableFuture<T>` for async execution. The `DatabaseManager` routes to the correct implementation based on the configured database type.
@@ -177,12 +180,10 @@ BEGIN TRANSACTION
   9. INSERT profile_roles (batch)
   10. DELETE FROM profile_member_roles WHERE owner_id = ?
   11. INSERT profile_member_roles (batch)
-  12. DELETE FROM profile_ally_flags WHERE owner_id = ?
-  13. INSERT profile_ally_flags (batch)
 COMMIT
 ```
 
-This approach is simple and ensures consistency, at the cost of more writes. For profiles with many chunks/members, consider batching optimizations in future versions.
+Legacy alliance and warp rows are deliberately not changed by profile saves. This approach is simple and ensures consistency, at the cost of more writes. For profiles with many chunks/members, consider batching optimizations in future versions.
 
 ## Cross-Server Sync (Redis)
 

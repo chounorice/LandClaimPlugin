@@ -12,6 +12,15 @@ public class MemberManagementConfig extends OkaeriConfig {
 
     public String title = "Members Management";
 
+    @Comment("Inventory row count and nine-slot-wide layout. Use x for Resident entries.")
+    public int rows = 4;
+
+    public List<String> layout = List.of(
+            "x x x x x x x x x",
+            "x x x x x x x x x",
+            "x x x x x x x x x",
+            "P B B + < B B B N");
+
     @Comment("Decorative border")
     public ItemConfig frame = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
 
@@ -46,6 +55,8 @@ public class MemberManagementConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         } // For Okaeri to instantiate

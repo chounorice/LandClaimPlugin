@@ -11,12 +11,23 @@ import java.util.List;
 public class ProfileSelectorConfig extends OkaeriConfig {
 
     public String title = "<dark_gray>Select Claim Profile";
+    public int rows = 5;
+    public List<String> layout = List.of(
+            "F F F F F F F F F",
+            "F x x x x x x x F",
+            "F x x x x x x x F",
+            "F x x x x x x x F",
+            "F F F P C N F F F");
 
     @Comment("The material used for a profile that is NOT active.")
     public String inactiveProfileMaterial = "BOOK";
+    @CustomKey("inactive_profile_item_model")
+    public String inactiveProfileItemModel;
 
     @Comment("The material used for the active profile.")
     public String activeProfileMaterial = "ENCHANTED_BOOK";
+    @CustomKey("active_profile_item_model")
+    public String activeProfileItemModel;
 
     @Comment("Format for the profile item name. Variables: <name>")
     public String profileNameFormat = "<!italic><gold><bold><name>";
@@ -52,6 +63,8 @@ public class ProfileSelectorConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         } // For Okaeri to instantiate

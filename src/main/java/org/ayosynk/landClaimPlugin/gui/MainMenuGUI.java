@@ -12,6 +12,7 @@ import org.bukkit.entity.Player;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 public class MainMenuGUI {
 
@@ -29,90 +30,81 @@ public class MainMenuGUI {
 
                         MainMenuConfig config = plugin.getConfigManager().getMainMenuConfig();
 
-                        String[] structure = {
-                                        "1 1 2 2 2 2 2 1 1",
-                                        "1 M W A S T E V 1",
-                                        "2 2 2 2 2 2 2 2 2",
-                                        "2 2 2 1 X 1 2 2 2"
-                        };
+                        String[] structure = validateLayout(config, plugin);
+                        if (structure == null) {
+                                FoliaScheduler.runForPlayer(plugin, player, () -> player.sendMessage(
+                                                GuiHelper.MM.deserialize("<red>Claim menu layout is invalid; check the plugin log.")));
+                                return;
+                        }
 
                         boolean canManage = profile.canManage(player);
                         boolean canManageSettings = canManage || org.ayosynk.landClaimPlugin.managers.PermissionResolver.hasPermission(profile, player.getUniqueId(), "MANAGE_SETTINGS");
-                        boolean canManageRoles = canManage || org.ayosynk.landClaimPlugin.managers.PermissionResolver.hasPermission(profile, player.getUniqueId(), "MANAGE_ROLES");
                         boolean canManageMembers = canManage || org.ayosynk.landClaimPlugin.managers.PermissionResolver.hasPermission(profile, player.getUniqueId(), "MANAGE_MEMBERS");
 
                         Map<Character, SlotDefinition> ingredients = new HashMap<>();
                         ingredients.put('1', GuiHelper.buildSlot(config.filler1.material, config.filler1.name,
-                                        config.filler1.lore, profile, player, ownerName, claimName));
+                                        config.filler1.lore, profile, player, ownerName, claimName,
+                                        config.filler1.itemModel));
                         ingredients.put('2', GuiHelper.buildSlot(config.filler2.material, config.filler2.name,
-                                        config.filler2.lore, profile, player, ownerName, claimName));
-                        ingredients.put('M', GuiHelper.buildSlot(config.claimMap.material, config.claimMap.name,
-                                        config.claimMap.lore, profile, player, ownerName, claimName, (p, e) -> {
-                                                p.closeInventory();
-                                                plugin.getMinimapManager().giveOrOpenMinimap(p);
-                                        }));
-                        ingredients.put('W', GuiHelper.buildSlot(config.warps.material, config.warps.name,
-                                        config.warps.lore, profile, player, ownerName, claimName, (p, e) -> {
-                                                p.closeInventory();
-                                                WarpManagementGUI.open(p, profile, plugin);
-                                        }));
-                        ingredients.put('A', GuiHelper.buildSlot(config.allies.material, config.allies.name,
-                                        config.allies.lore, profile, player, ownerName, claimName, (p, e) -> {
-                                                if (!canManageSettings) {
-                                                        p.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
-                                                        return;
-                                                }
-                                                p.closeInventory();
-                                                AllyManagementGUI.open(p, profile, plugin);
-                                        }));
+                                        config.filler2.lore, profile, player, ownerName, claimName,
+                                        config.filler2.itemModel));
                         ingredients.put('S', GuiHelper.buildSlot(config.settings.material, config.settings.name,
-                                        config.settings.lore, profile, player, ownerName, claimName, (p, e) -> {
+                                        config.settings.lore, profile, player, ownerName, claimName,
+                                        config.settings.itemModel, (p, e) -> {
                                                 // Settings menu itself handles granular permissions, but need MANAGE_SETTINGS or ADMIN_MENU to enter
                                                 // Actually ADMIN_MENU is what got them here, so we allow entry.
-                                                p.closeInventory();
                                                 ClaimSettingsGUI.open(p, profile, plugin);
                                         }));
                         ingredients.put('T', GuiHelper.buildSlot(config.trusted.material, config.trusted.name,
-                                        config.trusted.lore, profile, player, ownerName, claimName, (p, e) -> {
+                                        config.trusted.lore, profile, player, ownerName, claimName,
+                                        config.trusted.itemModel, (p, e) -> {
                                                 if (!canManageMembers) {
                                                         p.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
                                                         return;
                                                 }
-                                                p.closeInventory();
-                                                TrustManagementGUI.open(p, profile, plugin);
-                                        }));
-                        ingredients.put('E', GuiHelper.buildSlot(config.members.material, config.members.name,
-                                        config.members.lore, profile, player, ownerName, claimName, (p, e) -> {
-                                                if (!canManageMembers) {
-                                                        p.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
-                                                        return;
-                                                }
-                                                p.closeInventory();
-                                                MemberManagementGUI.open(p, profile, plugin);
+                                                ManageGUI.open(p, profile, plugin);
                                         }));
                         ingredients.put('V', GuiHelper.buildSlot(config.visitors.material, config.visitors.name,
-                                        config.visitors.lore, profile, player, ownerName, claimName, (p, e) -> {
+                                        config.visitors.lore, profile, player, ownerName, claimName,
+                                        config.visitors.itemModel, (p, e) -> {
                                                 if (!canManageSettings) {
                                                         p.sendMessage(plugin.getConfigManager().getMessage("no-permission"));
                                                         return;
                                                 }
-                                                if (plugin.getConfigManager().isVisitorSettingsLocked()) {
-                                                        p.sendMessage(plugin.getConfigManager().getMessage("visitor-settings-locked"));
-                                                        return;
-                                                }
-                                                p.closeInventory();
-                                                VisitorSettingsGUI.open(p, profile, plugin);
+                                                VisitorSettingsGUI.open(p, profile, plugin, "visitor");
                                         }));
-                        ingredients.put('X', GuiHelper.buildSlot(config.close.material, config.close.name,
-                                        config.close.lore, profile, player, ownerName, claimName,
-                                        (p, e) -> p.closeInventory()));
 
                         String windowTitle = config.title.replace("{claim_name}", claimName);
                         Component title = GuiHelper.MM.deserialize(windowTitle);
 
-                        CustomGui gui = new CustomGui(title, 4);
+                        CustomGui gui = new CustomGui(title, config.rows);
                         gui.fillFromStructure(structure, ingredients);
                         gui.open(player);
                 });
+        }
+
+        private static String[] validateLayout(MainMenuConfig config, LandClaimPlugin plugin) {
+                Set<String> allowedSlots = Set.of("1", "2", "S", "T", "V", ".");
+                if (config.rows < 1 || config.rows > 6 || config.layout == null
+                                || config.layout.size() != config.rows) {
+                        plugin.getLogger().severe("Invalid main menu layout: rows must be 1-6 and match the layout list.");
+                        return null;
+                }
+                for (int row = 0; row < config.layout.size(); row++) {
+                        String line = config.layout.get(row);
+                        if (line == null || line.trim().isEmpty() || line.trim().split("\\s+").length != 9) {
+                                plugin.getLogger().severe("Invalid main menu layout row " + (row + 1)
+                                                + ": each row must contain exactly nine space-separated slots.");
+                                return null;
+                        }
+                        for (String slot : line.trim().split("\\s+")) {
+                                if (!allowedSlots.contains(slot)) {
+                                        plugin.getLogger().severe("Invalid main menu layout slot '" + slot
+                                                        + "' in row " + (row + 1) + ".");
+                                        return null;
+                                }
+                        }
+                }
+                return config.layout.toArray(new String[0]);
         }
 }

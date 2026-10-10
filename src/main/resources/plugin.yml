@@ -16,29 +16,30 @@ permissions:
       landclaim.unclaim: true
       landclaim.member: true
       landclaim.trust: true
-      landclaim.ally: true
       landclaim.abandon: true
       landclaim.create: true
       landclaim.visible: true
       landclaim.toggle: true
       landclaim.info: true
-      landclaim.setwarp: true
-      landclaim.delwarp: true
-      landclaim.warp: true
       landclaim.pvp: true
       landclaim.rename: true
       landclaim.color: true
       landclaim.unclaimall: true
       landclaim.leave: true
       landclaim.ban: true
+      landclaim.spawnpoint: true
+      landclaim.teleport: true
+      landclaim.trust.limit.*: true
       landclaim.update.notify: true
-      landclaim.minimap: true
       landclaim.notify: true
   landclaim.notify:
     description: Toggle claim enter and leave chat notifications
     default: true
-  landclaim.minimap:
-    description: Access to the held territory map
+  landclaim.spawnpoint:
+    description: Set or remove your profile spawnpoint
+    default: true
+  landclaim.teleport:
+    description: Teleport to an authorized profile spawnpoint
     default: true
   landclaim.update.notify:
     description: Receive notifications when a new version of LandClaimPlugin is released
@@ -76,9 +77,6 @@ permissions:
   landclaim.trust:
     description: Access to trust subcommands
     default: true
-  landclaim.ally:
-    description: Access to ally subcommands
-    default: true
   landclaim.abandon:
     description: Abandon claim profile
     default: true
@@ -93,15 +91,6 @@ permissions:
     default: true
   landclaim.info:
     description: View claim information
-    default: true
-  landclaim.setwarp:
-    description: Set claim warps
-    default: true
-  landclaim.delwarp:
-    description: Delete claim warps
-    default: true
-  landclaim.warp:
-    description: Teleport to claim warps
     default: true
   landclaim.pvp:
     description: Toggle PvP state
@@ -121,9 +110,6 @@ permissions:
   landclaim.menu.*:
     description: Access to all GUI menus
     default: true
-  landclaim.warps.limit.*:
-    description: Max warps a player can set
-    default: false
-  landclaim.createrole.*:
-    description: Max custom roles a player can create
+  landclaim.trust.limit.*:
+    description: Maximum Trusted players allowed per claim profile
     default: false

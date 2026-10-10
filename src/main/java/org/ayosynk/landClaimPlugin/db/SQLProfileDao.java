@@ -3,7 +3,6 @@ package org.ayosynk.landClaimPlugin.db;
 import org.ayosynk.landClaimPlugin.LandClaimPlugin;
 import org.ayosynk.landClaimPlugin.models.ChunkPosition;
 import org.ayosynk.landClaimPlugin.models.ClaimProfile;
-import org.ayosynk.landClaimPlugin.models.Role;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -66,7 +65,33 @@ public class SQLProfileDao implements ProfileDao {
                         + "flag VARCHAR(64) NOT NULL,"
                         + "PRIMARY KEY (owner_id, flag))",
 
+                "CREATE TABLE IF NOT EXISTS " + p + "profile_category_flags ("
+                        + "owner_id VARCHAR(36) NOT NULL,"
+                        + "category VARCHAR(16) NOT NULL,"
+                        + "flag VARCHAR(64) NOT NULL,"
+                        + "PRIMARY KEY (owner_id, category, flag))",
+
+                "CREATE TABLE IF NOT EXISTS " + p + "profile_category_flag_sets ("
+                        + "owner_id VARCHAR(36) NOT NULL,"
+                        + "category VARCHAR(16) NOT NULL,"
+                        + "PRIMARY KEY (owner_id, category))",
+
+                "CREATE TABLE IF NOT EXISTS " + p + "profile_spawnpoints ("
+                        + "owner_id VARCHAR(36) PRIMARY KEY,"
+                        + "world_name VARCHAR(128) NOT NULL,"
+                        + "x DOUBLE NOT NULL,"
+                        + "y DOUBLE NOT NULL,"
+                        + "z DOUBLE NOT NULL,"
+                        + "yaw FLOAT NOT NULL,"
+                        + "pitch FLOAT NOT NULL)",
+
                 "CREATE TABLE IF NOT EXISTS " + p + "profile_member_roles ("
+                        + "owner_id VARCHAR(36) NOT NULL,"
+                        + "player_id VARCHAR(36) NOT NULL,"
+                        + "role_name VARCHAR(64) NOT NULL,"
+                        + "PRIMARY KEY (owner_id, player_id))",
+
+                "CREATE TABLE IF NOT EXISTS " + p + "profile_legacy_member_roles ("
                         + "owner_id VARCHAR(36) NOT NULL,"
                         + "player_id VARCHAR(36) NOT NULL,"
                         + "role_name VARCHAR(64) NOT NULL,"
@@ -90,6 +115,21 @@ public class SQLProfileDao implements ProfileDao {
                 try (PreparedStatement stmt = conn.prepareStatement(sql)) {
                     stmt.executeUpdate();
                 }
+            }
+
+            String archiveRoles = isSqlite()
+                    ? "INSERT OR IGNORE INTO " + p
+                            + "profile_legacy_member_roles (owner_id, player_id, role_name) SELECT owner_id, player_id, role_name FROM "
+                            + p + "profile_member_roles"
+                    : "INSERT IGNORE INTO " + p
+                            + "profile_legacy_member_roles (owner_id, player_id, role_name) SELECT owner_id, player_id, role_name FROM "
+                            + p + "profile_member_roles";
+            try (PreparedStatement stmt = conn.prepareStatement(archiveRoles)) {
+                stmt.executeUpdate();
+            }
+            try (PreparedStatement stmt = conn.prepareStatement(
+                    "UPDATE " + p + "profile_member_roles SET role_name = 'Resident' WHERE LOWER(role_name) <> 'resident'")) {
+                stmt.executeUpdate();
             }
 
             // Migration: add claim_color and vis_mode columns if missing
@@ -196,6 +236,57 @@ public class SQLProfileDao implements ProfileDao {
                     }
                 }
 
+                clearTable(conn, p + "profile_category_flags", "owner_id", oid);
+                clearTable(conn, p + "profile_category_flag_sets", "owner_id", oid);
+                String insertCategorySet = sqlite
+                        ? "INSERT OR REPLACE INTO " + p
+                                + "profile_category_flag_sets (owner_id, category) VALUES (?, ?)"
+                        : "INSERT INTO " + p
+                                + "profile_category_flag_sets (owner_id, category) VALUES (?, ?) ON DUPLICATE KEY UPDATE category=VALUES(category)";
+                try (PreparedStatement stmt = conn.prepareStatement(insertCategorySet)) {
+                    for (String category : List.of("resident", "trusted", "visitor")) {
+                        stmt.setString(1, oid);
+                        stmt.setString(2, category);
+                        stmt.addBatch();
+                    }
+                    stmt.executeBatch();
+                }
+                String insertCategoryFlag = sqlite
+                        ? "INSERT OR REPLACE INTO " + p
+                                + "profile_category_flags (owner_id, category, flag) VALUES (?, ?, ?)"
+                        : "INSERT INTO " + p
+                                + "profile_category_flags (owner_id, category, flag) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE flag=VALUES(flag)";
+                try (PreparedStatement stmt = conn.prepareStatement(insertCategoryFlag)) {
+                    for (String category : List.of("resident", "trusted")) {
+                        for (String flag : profile.getCategoryFlags(category)) {
+                            stmt.setString(1, oid);
+                            stmt.setString(2, category);
+                            stmt.setString(3, flag);
+                            stmt.addBatch();
+                        }
+                    }
+                    stmt.executeBatch();
+                }
+
+                clearTable(conn, p + "profile_spawnpoints", "owner_id", oid);
+                if (profile.getSpawnpointWorldName() != null) {
+                    String insertSpawnpoint = sqlite
+                            ? "INSERT OR REPLACE INTO " + p
+                                    + "profile_spawnpoints (owner_id, world_name, x, y, z, yaw, pitch) VALUES (?, ?, ?, ?, ?, ?, ?)"
+                            : "INSERT INTO " + p
+                                    + "profile_spawnpoints (owner_id, world_name, x, y, z, yaw, pitch) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE world_name=VALUES(world_name), x=VALUES(x), y=VALUES(y), z=VALUES(z), yaw=VALUES(yaw), pitch=VALUES(pitch)";
+                    try (PreparedStatement stmt = conn.prepareStatement(insertSpawnpoint)) {
+                        stmt.setString(1, oid);
+                        stmt.setString(2, profile.getSpawnpointWorldName());
+                        stmt.setDouble(3, profile.getSpawnpointX());
+                        stmt.setDouble(4, profile.getSpawnpointY());
+                        stmt.setDouble(5, profile.getSpawnpointZ());
+                        stmt.setFloat(6, profile.getSpawnpointYaw());
+                        stmt.setFloat(7, profile.getSpawnpointPitch());
+                        stmt.executeUpdate();
+                    }
+                }
+
                 // 4. Clear and re-insert trusted players
                 clearTable(conn, p + "profile_trusted_players", "owner_id", oid);
                 if (!profile.getTrustedPlayerFlags().isEmpty()) {
@@ -209,27 +300,6 @@ public class SQLProfileDao implements ProfileDao {
                             stmt.setString(1, oid);
                             stmt.setString(2, entry.getKey().toString());
                             stmt.setString(3, String.join(",", entry.getValue()));
-                            stmt.addBatch();
-                        }
-                        stmt.executeBatch();
-                    }
-                }
-
-                // 5. Clear and re-insert roles
-                clearTable(conn, p + "profile_roles", "owner_id", oid);
-                if (!profile.getRoles().isEmpty()) {
-                    String insertRole = sqlite
-                            ? "INSERT OR REPLACE INTO " + p
-                                    + "profile_roles (id, owner_id, name, priority, flags) VALUES (?, ?, ?, ?, ?)"
-                            : "INSERT INTO " + p
-                                    + "profile_roles (id, owner_id, name, priority, flags) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE name=VALUES(name), priority=VALUES(priority), flags=VALUES(flags)";
-                    try (PreparedStatement stmt = conn.prepareStatement(insertRole)) {
-                        for (Role role : profile.getRoles().values()) {
-                            stmt.setString(1, role.getId().toString());
-                            stmt.setString(2, oid);
-                            stmt.setString(3, role.getName());
-                            stmt.setInt(4, role.getPriority());
-                            stmt.setString(5, String.join(",", role.getFlags()));
                             stmt.addBatch();
                         }
                         stmt.executeBatch();
@@ -255,26 +325,7 @@ public class SQLProfileDao implements ProfileDao {
                     }
                 }
 
-                // 7. Clear and re-insert allied claims
-                clearTable(conn, p + "profile_ally_flags", "owner_id", oid);
-                if (!profile.getAllyFlags().isEmpty()) {
-                    String insertAlly = sqlite
-                            ? "INSERT OR REPLACE INTO " + p
-                                    + "profile_ally_flags (owner_id, ally_id, flags) VALUES (?, ?, ?)"
-                            : "INSERT INTO " + p
-                                    + "profile_ally_flags (owner_id, ally_id, flags) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE flags=VALUES(flags)";
-                    try (PreparedStatement stmt = conn.prepareStatement(insertAlly)) {
-                        for (Map.Entry<UUID, Set<String>> entry : profile.getAllyFlags().entrySet()) {
-                            stmt.setString(1, oid);
-                            stmt.setString(2, entry.getKey().toString());
-                            stmt.setString(3, String.join(",", entry.getValue()));
-                            stmt.addBatch();
-                        }
-                        stmt.executeBatch();
-                    }
-                }
-
-                // 8. Clear and re-insert banned players
+                // 7. Clear and re-insert banned players
                 clearTable(conn, p + "profile_banned_players", "owner_id", oid);
                 if (!profile.getBannedPlayers().isEmpty()) {
                     String insertBanned = sqlite
@@ -330,7 +381,11 @@ public class SQLProfileDao implements ProfileDao {
                 try {
                     clearTable(conn, p + "profile_ally_flags", "owner_id", oid);
                     clearTable(conn, p + "profile_banned_players", "owner_id", oid);
+                    clearTable(conn, p + "profile_category_flags", "owner_id", oid);
+                    clearTable(conn, p + "profile_category_flag_sets", "owner_id", oid);
                     clearTable(conn, p + "profile_member_roles", "owner_id", oid);
+                    clearTable(conn, p + "profile_legacy_member_roles", "owner_id", oid);
+                    clearTable(conn, p + "profile_spawnpoints", "owner_id", oid);
                     clearTable(conn, p + "profile_roles", "owner_id", oid);
                     clearTable(conn, p + "profile_trusted_players", "owner_id", oid);
                     clearTable(conn, p + "profile_visitor_flags", "owner_id", oid);
@@ -425,19 +480,11 @@ public class SQLProfileDao implements ProfileDao {
                 profile.setBonusWarpSlots(bonusWarpSlots);
                 loadChunks(conn, p, profile);
                 loadVisitorFlags(conn, p, profile);
+                loadCategoryFlags(conn, p, profile);
+                loadSpawnpoint(conn, p, profile);
                 loadTrustedPlayers(conn, p, profile);
-                loadRoles(conn, p, profile);
                 loadMemberRoles(conn, p, profile);
-                loadAllyFlags(conn, p, profile);
                 loadBannedPlayers(conn, p, profile);
-
-                // Load warps from WarpManager to keep ClaimProfile in sync
-                Map<String, org.ayosynk.landClaimPlugin.models.Warp> warps = plugin.getWarpManager().getWarps(ownerId);
-                if (!warps.isEmpty()) {
-                    for (org.ayosynk.landClaimPlugin.models.Warp warp : warps.values()) {
-                        profile.addWarp(warp);
-                    }
-                }
 
                 return profile;
             } catch (SQLException e) {
@@ -489,20 +536,11 @@ public class SQLProfileDao implements ProfileDao {
                     profile.setBonusWarpSlots(rs.getInt("bonus_warp_slots"));
                     loadChunks(conn, p, profile);
                     loadVisitorFlags(conn, p, profile);
+                    loadCategoryFlags(conn, p, profile);
+                    loadSpawnpoint(conn, p, profile);
                     loadTrustedPlayers(conn, p, profile);
-                    loadRoles(conn, p, profile);
                     loadMemberRoles(conn, p, profile);
-                    loadAllyFlags(conn, p, profile);
                     loadBannedPlayers(conn, p, profile);
-
-                    // Load warps from WarpManager to keep ClaimProfile in sync
-                    Map<String, org.ayosynk.landClaimPlugin.models.Warp> warps = plugin.getWarpManager()
-                            .getWarps(profileId);
-                    if (!warps.isEmpty()) {
-                        for (org.ayosynk.landClaimPlugin.models.Warp warp : warps.values()) {
-                            profile.addWarp(warp);
-                        }
-                    }
 
                     profiles.add(profile);
                 }
@@ -573,13 +611,74 @@ public class SQLProfileDao implements ProfileDao {
     }
 
     private void loadVisitorFlags(Connection conn, String p, ClaimProfile profile) throws SQLException {
-        profile.getVisitorFlags().clear();
+        Set<String> flags = new HashSet<>();
         try (PreparedStatement stmt = conn
                 .prepareStatement("SELECT flag FROM " + p + "profile_visitor_flags WHERE owner_id = ?")) {
             stmt.setString(1, profile.getProfileId().toString());
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
-                    profile.addVisitorFlag(rs.getString("flag"));
+                    flags.add(rs.getString("flag").toUpperCase());
+                }
+            }
+        }
+        if (!flags.isEmpty() || hasCategoryFlagSet(conn, p, profile.getProfileId(), "visitor")) {
+            profile.setCategoryFlags("visitor", flags);
+        }
+    }
+
+    private void loadCategoryFlags(Connection conn, String p, ClaimProfile profile) throws SQLException {
+        Set<String> initialized = new HashSet<>();
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "SELECT category FROM " + p + "profile_category_flag_sets WHERE owner_id = ?")) {
+            stmt.setString(1, profile.getProfileId().toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    initialized.add(rs.getString("category").toLowerCase());
+                }
+            }
+        }
+        Set<String> cleared = new HashSet<>();
+        for (String category : List.of("resident", "trusted")) {
+            if (initialized.contains(category)) {
+                profile.setCategoryFlags(category, Set.of());
+                cleared.add(category);
+            }
+        }
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "SELECT category, flag FROM " + p + "profile_category_flags WHERE owner_id = ?")) {
+            stmt.setString(1, profile.getProfileId().toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                while (rs.next()) {
+                    String category = rs.getString("category").toLowerCase();
+                    if (!initialized.contains(category) && cleared.add(category)) {
+                        profile.setCategoryFlags(category, Set.of());
+                    }
+                    profile.getCategoryFlags(category).add(rs.getString("flag").toUpperCase());
+                }
+            }
+        }
+    }
+
+    private boolean hasCategoryFlagSet(Connection conn, String p, UUID profileId, String category)
+            throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "SELECT 1 FROM " + p + "profile_category_flag_sets WHERE owner_id = ? AND category = ?")) {
+            stmt.setString(1, profileId.toString());
+            stmt.setString(2, category);
+            try (ResultSet rs = stmt.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
+    private void loadSpawnpoint(Connection conn, String p, ClaimProfile profile) throws SQLException {
+        try (PreparedStatement stmt = conn.prepareStatement(
+                "SELECT world_name, x, y, z, yaw, pitch FROM " + p + "profile_spawnpoints WHERE owner_id = ?")) {
+            stmt.setString(1, profile.getProfileId().toString());
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    profile.setSpawnpointData(rs.getString("world_name"), rs.getDouble("x"),
+                            rs.getDouble("y"), rs.getDouble("z"), rs.getFloat("yaw"), rs.getFloat("pitch"));
                 }
             }
         }
@@ -605,26 +704,6 @@ public class SQLProfileDao implements ProfileDao {
         }
     }
 
-    private void loadRoles(Connection conn, String p, ClaimProfile profile) throws SQLException {
-        try (PreparedStatement stmt = conn
-                .prepareStatement("SELECT * FROM " + p + "profile_roles WHERE owner_id = ?")) {
-            stmt.setString(1, profile.getProfileId().toString());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    UUID roleId = UUID.fromString(rs.getString("id"));
-                    Role role = new Role(roleId, profile.getProfileId(), rs.getString("name"), rs.getInt("priority"));
-                    String flagsStr = rs.getString("flags");
-                    if (flagsStr != null && !flagsStr.isEmpty()) {
-                        for (String flag : flagsStr.split(",")) {
-                            role.addFlag(flag.trim());
-                        }
-                    }
-                    profile.addRole(role);
-                }
-            }
-        }
-    }
-
     private void loadMemberRoles(Connection conn, String p, ClaimProfile profile) throws SQLException {
         try (PreparedStatement stmt = conn
                 .prepareStatement(
@@ -633,26 +712,6 @@ public class SQLProfileDao implements ProfileDao {
             try (ResultSet rs = stmt.executeQuery()) {
                 while (rs.next()) {
                     profile.setMemberRole(UUID.fromString(rs.getString("player_id")), rs.getString("role_name"));
-                }
-            }
-        }
-    }
-
-    private void loadAllyFlags(Connection conn, String p, ClaimProfile profile) throws SQLException {
-        try (PreparedStatement stmt = conn
-                .prepareStatement("SELECT ally_id, flags FROM " + p + "profile_ally_flags WHERE owner_id = ?")) {
-            stmt.setString(1, profile.getProfileId().toString());
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    UUID allyId = UUID.fromString(rs.getString("ally_id"));
-                    String flagsStr = rs.getString("flags");
-                    Set<String> flags = new HashSet<>();
-                    if (flagsStr != null && !flagsStr.isEmpty()) {
-                        for (String flag : flagsStr.split(",")) {
-                            flags.add(flag.trim().toUpperCase());
-                        }
-                    }
-                    profile.setAllyFlags(allyId, flags);
                 }
             }
         }

@@ -176,7 +176,7 @@ public class EventListener implements Listener {
                                 .replace("<owner>", ownerName)
                                 .replace("<claim>", claimName)
                                 .replace("<name>", claimName);
-                    } else if (status.equals("member") || status.equals("trusted")) {
+                    } else if (status.equals("resident") || status.equals("trusted")) {
                         message = configManager.getActionBarMessage("actionbar-trusted")
                                 .replace("<owner>", ownerName)
                                 .replace("<claim>", claimName)

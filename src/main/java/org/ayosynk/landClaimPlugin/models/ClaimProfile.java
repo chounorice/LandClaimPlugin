@@ -5,10 +5,12 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.bukkit.Bukkit;
+import org.bukkit.Location;
 
 /**
  * A single global claim profile per player.
- * All claimed land, permissions, roles, trusted players, and visitor flags
+ * All claimed land, permissions, membership categories, and visitor flags
  * are attached to this profile. A player may own at most one ClaimProfile.
  */
 public class ClaimProfile {
@@ -23,11 +25,15 @@ public class ClaimProfile {
     private final Set<ChunkPosition> ownedChunks = new HashSet<>();
     private final Set<String> visitorFlags = new HashSet<>();
     private final Map<UUID, Set<String>> trustedPlayerFlags = new HashMap<>();
-    private final Map<String, Role> roles = new HashMap<>();
     private final Map<UUID, String> memberRoles = new HashMap<>();
-    private final Map<UUID, Set<String>> allyFlags = new HashMap<>();
+    private final Map<String, Set<String>> categoryFlags = new HashMap<>();
     private final Set<UUID> bannedPlayers = new HashSet<>();
-    private final Map<String, Warp> warps = new HashMap<>();
+    private String spawnpointWorld;
+    private double spawnpointX;
+    private double spawnpointY;
+    private double spawnpointZ;
+    private float spawnpointYaw;
+    private float spawnpointPitch;
     private String claimColor; // Hex color string, e.g. "#00FF00", nullable (falls back to default)
     private String visualizationMode = "DISPLAY_ENTITY"; // "DISPLAY_ENTITY" or "PARTICLE"
 
@@ -52,7 +58,7 @@ public class ClaimProfile {
         this.realOwnerId = realOwnerId;
         this.name = name;
         setupDefaultVisitorFlags();
-        setupDefaultRoles();
+        setupDefaultCategoryFlags();
     }
 
     public ClaimProfile(UUID ownerId, String name) {
@@ -60,7 +66,7 @@ public class ClaimProfile {
         this.realOwnerId = ownerId;
         this.name = name;
         setupDefaultVisitorFlags();
-        setupDefaultRoles();
+        setupDefaultCategoryFlags();
     }
 
     private void setupDefaultVisitorFlags() {
@@ -72,47 +78,15 @@ public class ClaimProfile {
         }
     }
 
-    private void setupDefaultRoles() {
-        // Default Member Role (Basic Interact)
-        Role memberRole = new Role(UUID.randomUUID(), this.profileId, "Member", 100);
-        memberRole.addFlag("USE_DOORS");
-        memberRole.addFlag("USE_TRAPDOORS");
-        memberRole.addFlag("USE_FENCE_GATES");
-        memberRole.addFlag("USE_CONTAINERS");
-        memberRole.addFlag("USE_WORKSTATIONS");
-        memberRole.addFlag("USE_BEDS");
-        memberRole.addFlag("USE_REDSTONE");
-        memberRole.addFlag("DAMAGE_MONSTERS");
-        memberRole.addFlag("DAMAGE_ANIMALS");
-        this.roles.put(memberRole.getName().toLowerCase(), memberRole);
-
-        // Default CoOwner Role (All Permissions)
-        Role coOwnerRole = new Role(UUID.randomUUID(), this.profileId, "CoOwner", 10);
-        coOwnerRole.addFlag("USE_DOORS");
-        coOwnerRole.addFlag("USE_TRAPDOORS");
-        coOwnerRole.addFlag("USE_FENCE_GATES");
-        coOwnerRole.addFlag("USE_CONTAINERS");
-        coOwnerRole.addFlag("USE_WORKSTATIONS");
-        coOwnerRole.addFlag("USE_BEDS");
-        coOwnerRole.addFlag("USE_REDSTONE");
-        coOwnerRole.addFlag("MANAGE_MEMBERS");
-        coOwnerRole.addFlag("MANAGE_ROLES");
-        coOwnerRole.addFlag("MANAGE_SETTINGS");
-        coOwnerRole.addFlag("ADMIN_MENU");
-        coOwnerRole.addFlag("USE_BUCKETS");
-        coOwnerRole.addFlag("TRAMPLE_CROPS");
-        coOwnerRole.addFlag("BLOCK_BREAK");
-        coOwnerRole.addFlag("BLOCK_PLACE");
-        coOwnerRole.addFlag("BLOCK_IGNITE");
-        coOwnerRole.addFlag("INTERACT_ENTITIES");
-        coOwnerRole.addFlag("HARM_ENTITIES");
-        coOwnerRole.addFlag("MANAGE_VEHICLES");
-        coOwnerRole.addFlag("WARP_MANAGE");
-        coOwnerRole.addFlag("MODIFY_SIGNS");
-        coOwnerRole.addFlag("USE_FERTILIZER");
-        coOwnerRole.addFlag("USE_LEASHES");
-        coOwnerRole.addFlag("INTERACT_VILLAGERS");
-        this.roles.put(coOwnerRole.getName().toLowerCase(), coOwnerRole);
+    private void setupDefaultCategoryFlags() {
+        this.categoryFlags.put("visitor", new HashSet<>(visitorFlags));
+        this.categoryFlags.put("resident", new HashSet<>(Set.of(
+                "USE_DOORS", "USE_TRAPDOORS", "USE_FENCE_GATES", "USE_CONTAINERS",
+                "USE_WORKSTATIONS", "USE_BEDS", "USE_REDSTONE", "DAMAGE_MONSTERS",
+                "DAMAGE_ANIMALS")));
+        this.categoryFlags.put("trusted", new HashSet<>(Set.of(
+                "USE_DOORS", "USE_TRAPDOORS", "USE_FENCE_GATES", "USE_CONTAINERS",
+                "USE_WORKSTATIONS", "USE_BEDS", "USE_REDSTONE")));
     }
 
     // --- Owner ---
@@ -245,24 +219,6 @@ public class ClaimProfile {
         trustedPlayerFlags.remove(playerId);
     }
 
-    // --- Roles (per-profile role definitions) ---
-
-    public Map<String, Role> getRoles() {
-        return roles;
-    }
-
-    public Role getRoleByName(String name) {
-        return roles.get(name.toLowerCase());
-    }
-
-    public void addRole(Role role) {
-        roles.put(role.getName().toLowerCase(), role);
-    }
-
-    public void removeRole(String name) {
-        roles.remove(name.toLowerCase());
-    }
-
     // --- Member Roles (player → role assignment) ---
 
     public Map<UUID, String> getMemberRoles() {
@@ -274,14 +230,14 @@ public class ClaimProfile {
     }
 
     public String getMemberRole(UUID playerId) {
-        return memberRoles.get(playerId);
+        return memberRoles.containsKey(playerId) ? "Resident" : null;
     }
 
     public void setMemberRole(UUID playerId, String roleName) {
         if (roleName == null) {
             memberRoles.remove(playerId);
         } else {
-            memberRoles.put(playerId, roleName);
+            memberRoles.put(playerId, "Resident");
         }
     }
 
@@ -289,31 +245,76 @@ public class ClaimProfile {
         memberRoles.remove(playerId);
     }
 
-    // --- Allies (inter-claim permissions) ---
-
-    public Map<UUID, Set<String>> getAllyFlags() {
-        return allyFlags;
+    public Set<String> getCategoryFlags(String category) {
+        String key = normalizeCategory(category);
+        if (key.equals("visitor")) return visitorFlags;
+        return categoryFlags.computeIfAbsent(key, ignored -> new HashSet<>());
     }
 
-    public boolean hasAlly(UUID allyOwnerId) {
-        return allyFlags.containsKey(allyOwnerId);
+    public void setCategoryFlags(String category, Set<String> flags) {
+        String key = normalizeCategory(category);
+        Set<String> normalized = new HashSet<>();
+        if (flags != null) {
+            for (String flag : flags) normalized.add(flag.toUpperCase());
+        }
+        if (key.equals("visitor")) {
+            visitorFlags.clear();
+            visitorFlags.addAll(normalized);
+        } else {
+            categoryFlags.put(key, normalized);
+        }
     }
 
-    public Set<String> getAllyFlags(UUID allyOwnerId) {
-        return allyFlags.get(allyOwnerId);
+    public boolean hasCategoryFlag(String category, String flag) {
+        return getCategoryFlags(category).contains(flag.toUpperCase());
     }
 
-    public void setAllyFlags(UUID allyOwnerId, Set<String> flags) {
-        allyFlags.put(allyOwnerId, flags);
+    private String normalizeCategory(String category) {
+        if (category == null) throw new IllegalArgumentException("Role category cannot be null");
+        String normalized = category.toLowerCase();
+        if (!normalized.equals("resident") && !normalized.equals("trusted") && !normalized.equals("visitor")) {
+            throw new IllegalArgumentException("Unknown role category: " + category);
+        }
+        return normalized;
     }
 
-    public void addAlly(UUID allyOwnerId) {
-        allyFlags.putIfAbsent(allyOwnerId, new HashSet<>());
+    public Location getSpawnpoint() {
+        if (spawnpointWorld == null) return null;
+        org.bukkit.World world = Bukkit.getWorld(spawnpointWorld);
+        return world == null ? null : new Location(world, spawnpointX, spawnpointY, spawnpointZ, spawnpointYaw, spawnpointPitch);
     }
 
-    public void removeAlly(UUID allyOwnerId) {
-        allyFlags.remove(allyOwnerId);
+    public void setSpawnpoint(Location spawnpoint) {
+        if (spawnpoint == null || spawnpoint.getWorld() == null) {
+            spawnpointWorld = null;
+            return;
+        }
+        this.spawnpointWorld = spawnpoint.getWorld().getName();
+        this.spawnpointX = spawnpoint.getX();
+        this.spawnpointY = spawnpoint.getY();
+        this.spawnpointZ = spawnpoint.getZ();
+        this.spawnpointYaw = spawnpoint.getYaw();
+        this.spawnpointPitch = spawnpoint.getPitch();
     }
+
+    public String getSpawnpointWorldName() {
+        return spawnpointWorld;
+    }
+
+    public void setSpawnpointData(String world, double x, double y, double z, float yaw, float pitch) {
+        this.spawnpointWorld = world;
+        this.spawnpointX = x;
+        this.spawnpointY = y;
+        this.spawnpointZ = z;
+        this.spawnpointYaw = yaw;
+        this.spawnpointPitch = pitch;
+    }
+
+    public double getSpawnpointX() { return spawnpointX; }
+    public double getSpawnpointY() { return spawnpointY; }
+    public double getSpawnpointZ() { return spawnpointZ; }
+    public float getSpawnpointYaw() { return spawnpointYaw; }
+    public float getSpawnpointPitch() { return spawnpointPitch; }
 
     // --- Banned Players (hard entry denial) ---
 
@@ -339,24 +340,6 @@ public class ClaimProfile {
     public void removeBannedPlayer(UUID playerId) {
         if (playerId == null) return;
         bannedPlayers.remove(playerId);
-    }
-
-    // --- Warps ---
-
-    public Map<String, Warp> getWarps() {
-        return warps;
-    }
-
-    public Warp getWarp(String name) {
-        return warps.get(name.toLowerCase());
-    }
-
-    public void addWarp(Warp warp) {
-        warps.put(warp.getName().toLowerCase(), warp);
-    }
-
-    public void removeWarp(String name) {
-        warps.remove(name.toLowerCase());
     }
 
     // --- Claim Color ---

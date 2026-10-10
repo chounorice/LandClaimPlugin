@@ -146,11 +146,14 @@ public class PluginConfig extends OkaeriConfig {
     @Comment("Maximum total claim limit a player can reach through base limit + permissions + purchases (0 = unlimited).")
     public int maxTotalClaimLimit = 0;
     
-    @Comment("Maximum number of claims a player is allowed to join as a trusted member (default: 1).")
+    @Comment("Maximum number of claim profiles a player may join as a Resident (default: 1).")
     public int maxMemberships = 1;
 
-    @Comment("Default maximum members allowed per claim profile.")
+    @Comment("Default maximum Residents allowed per claim profile.")
     public int maxClaimMembers = 5;
+
+    @Comment("Default maximum Trusted players allowed per claim profile (can be increased with landclaim.trust.limit.<n>).")
+    public int maxTrustedPlayers = 5;
 
     @Comment("Database connection and backend settings (Supported backends: SQLITE, MYSQL, MARIADB).")
     public DatabaseConfig database = new DatabaseConfig();
@@ -257,9 +260,6 @@ public class PluginConfig extends OkaeriConfig {
         "If Geyser is not installed, this option has no effect and Java fallbacks are used."
     })
     public boolean geyserForms = true;
-
-    @Comment("Default maximum claim warps a player can set (can be bypassed with landclaim.warps.limit.X permission).")
-    public int maxWarps = 3;
 
     @Comment({
         "Force-enable PvP across every claim, server-wide.",
@@ -377,9 +377,6 @@ public class PluginConfig extends OkaeriConfig {
         }
         if (cooldownUnstuck < 0) {
             errors.add("cooldownUnstuck cannot be negative, found: " + cooldownUnstuck);
-        }
-        if (maxWarps <= 0) {
-            errors.add("maxWarps must be greater than 0, found: " + maxWarps);
         }
         if (actionbarUpdateInterval <= 0) {
             errors.add("actionbarUpdateInterval must be greater than 0, found: " + actionbarUpdateInterval);

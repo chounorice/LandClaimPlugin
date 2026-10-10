@@ -11,6 +11,12 @@ import java.util.List;
 public class PlayerControlPanelConfig extends OkaeriConfig {
 
     public String title = "Player Control Panel";
+    public int rows = 4;
+    public List<String> layout = List.of(
+            "F F F F F F F F F",
+            "F F C F T F K F F",
+            "F F F F F F F F F",
+            ". . . X B B B . .");
 
     @Comment("Main UI framing")
     public ItemConfig frame = new ItemConfig("GRAY_STAINED_GLASS_PANE", " ", List.of());
@@ -18,11 +24,11 @@ public class PlayerControlPanelConfig extends OkaeriConfig {
     @Comment("Bottom separator")
     public ItemConfig accent = new ItemConfig("WHITE_STAINED_GLASS_PANE", " ", List.of());
 
-    @Comment("Change Role Button")
+    @Comment("Resident membership indicator")
     public ItemConfig changeRole = new ItemConfig(
-            "SHELTER_POTTERY_SHERD",
-            "<yellow>Change Role",
-            List.of("<gray>Click to assign a different", "<gray>role to this player."));
+            "PLAYER_HEAD",
+            "<green>Resident",
+            List.of("<gray>This player is a Resident of the profile."));
 
     @Comment("Transfer Ownership Button")
     public ItemConfig transferOwnership = new ItemConfig(
@@ -52,6 +58,8 @@ public class PlayerControlPanelConfig extends OkaeriConfig {
         public String material;
         public String name;
         public List<String> lore;
+        @CustomKey("item_model")
+        public String itemModel;
 
         public ItemConfig() {
         } // For Okaeri to instantiate
